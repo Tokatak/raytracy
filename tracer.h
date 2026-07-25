@@ -425,7 +425,7 @@ void fillRegion
         direction.z /= dirLen;
       }
       
-      color = traceRay(origin, direction, 1, BIG_NUMBER, recursion_depth,
+      color = traceRay(origin, direction, t_min, t_max, recursion_depth,
 		       spheres,  sphereCount,
 		       lights, lightCount);
 
@@ -550,7 +550,7 @@ void fillRegionWin( V3 origin, V3 cameraDirection, Region region, V3 viewportSiz
       }
       
       
-      color = traceRay(origin, direction, 1, BIG_NUMBER, recursion_depth,
+      color = traceRay(origin, direction, t_min, t_max, recursion_depth,
 		       spheres,  sphereCount,
 		       lights, lightCount);
 
