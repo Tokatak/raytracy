@@ -1,13 +1,15 @@
 build:
 # debug
-	gcc -Wall -Wextra -Wpedantic -g -O0 -o main main.c main.exe
+	gcc -Wall -Wextra -Wpedantic -g -O0 -o main main.c &&  main.exe
 
 # optimized
 #	 gcc -Wall -Wextra -Wpedantic -O3 -march=native -o main main.c && main.exe
 
 msvc:
-	cl /Zi /DEBUG /EHsc main.c  && main.exe
+	cl /Zi /DEBUG /EHsc main.c && main.exe
 
+test:
+	gcc -Wall ./tests/main.c -o tests && tests.exe
 
 profile-clean:
 	rm gmon.out && rm executable.exe && rm callgraph.txt
@@ -16,4 +18,4 @@ profile-build:
 profile-run:
 	gprof -q executable.exe gmon.out > callgraph.txt
 profile: profile-clean profile-build profile-run
-	
+
