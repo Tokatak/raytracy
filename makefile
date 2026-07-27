@@ -8,9 +8,17 @@ build:
 msvc:
 	cl /Zi /DEBUG /EHsc main.c && main.exe
 
-test:
-	gcc -Wall ./tests/main.c -o tests && tests.exe
 
+# TESTS
+tests-clean:
+	-rm -f test_suite
+tests-build:
+	gcc -Wall  -I./external/minunit	 -I./ ./tests/main.c -o test_suite 
+tests-run:
+	test_suite.exe
+test tests: tests-clean tests-build tests-run
+	
+# PROFILE
 profile-clean:
 	rm gmon.out && rm executable.exe && rm callgraph.txt
 profile-build:

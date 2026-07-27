@@ -1,7 +1,17 @@
 #include <stdio.h>
-#include "../tracer.h"
+#include "tracer.h"
+#include "minunit.h"
 
-int main(void){
+MU_TEST(test_check) {
+  //	mu_check(5 == 7);
+		mu_check(7 == 7);
+}
+MU_TEST_SUITE(test_suite) {
+	MU_RUN_TEST(test_check);
+}
 
-  return 0;
+int main(int argc, char *argv[]) {
+	MU_RUN_SUITE(test_suite);
+	MU_REPORT();
+	return MU_EXIT_CODE;
 }
