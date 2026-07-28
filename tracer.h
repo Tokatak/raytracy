@@ -3,6 +3,16 @@
 
 #include <stdio.h>
 
+// always assuming 256 color mode
+typedef struct 
+{
+  unsigned char* buffer;
+  int pxWidth;
+  int pxHeight;
+
+} PpmBuffer;
+
+
 void save(unsigned char* buffer, int widthPixel, int heightPixel, char* fileName){
   FILE *fptr;
   fptr = fopen(fileName, "w");
@@ -18,6 +28,12 @@ void save(unsigned char* buffer, int widthPixel, int heightPixel, char* fileName
     }
   }
 }
+
+// todo: review
+void save_ppmbuffer(char* fileName, PpmBuffer* buffer){
+  save( buffer->buffer, buffer->pxWidth, buffer->pxHeight, fileName );
+}
+
 
 #endif
 

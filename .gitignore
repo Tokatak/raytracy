@@ -4,7 +4,10 @@
 *.ilk
 *.obj
 *.pdb
+
 *.ppm
+!tests/*.ppm
+
 *~
 *#*
 todo.org
