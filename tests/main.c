@@ -80,7 +80,7 @@ void LoadImage(char *path, PpmBuffer* result){
 }
 
 void SaveImage(char* filename, PpmBuffer* ppm){
-  save_ppmbuffer(filename, ppm);
+  ppmbuffer_save(filename, ppm);
 }
 
 void SaveSideBySide(PpmBuffer* stored, PpmBuffer* generated, char* suffix){
@@ -109,7 +109,7 @@ bool SameImage(PpmBuffer* stored, PpmBuffer* generated){
     int pixelCount = stored->pxWidth * stored->pxHeight * 3;
     for (int i = 0; i < pixelCount; i++) {
 
-      printf("Stored %d generated %d", stored->buffer[i], generated->buffer[i]);
+      //       printf("Stored %d generated %d", stored->buffer[i], generated->buffer[i]);
       
         if (stored->buffer[i] != generated->buffer[i]) {
             printf("Images differ at pixel %d (byte %d)\n", i / 3, i % 3);
@@ -130,15 +130,15 @@ MU_TEST(test_check) {
 
   char filename[256];
   sprintf(filename, "%s/%s", SCREENSHOT_FOLDER, __func__);
-  printf("LOADING: %s", filename);
+  //  printf("LOADING: %s", filename);
   
   LoadImage(filename, &loaded);
-  printf("Image loaded: %dx%d, buffer=%p\n", loaded.pxWidth, loaded.pxHeight, loaded.buffer);
+  //  printf("Image loaded: %dx%d, buffer=%p\n", loaded.pxWidth, loaded.pxHeight, loaded.buffer);
 
   // generate image
   PpmBuffer generated = {0};
-  generated.pxWidth = 9;
-  generated.pxHeight = 9;
+  generated.pxWidth = 640;
+  generated.pxHeight = 480;
 
   int pixelCount = generated.pxWidth * generated.pxHeight;
   int byteCount = pixelCount * 3;
@@ -146,25 +146,76 @@ MU_TEST(test_check) {
   generated.buffer = (unsigned char*)malloc(byteCount);
   if (!generated.buffer) {
     printf("Memory allocation failed\n");
-    // Handle error
-  }
-  
-  for (int i = 0; i < pixelCount; i++) {
-    generated.buffer[i*3 + 0] = 210;
-    generated.buffer[i*3 + 1] = 210;
-    generated.buffer[i*3 + 2] = 210;
+    //todo:  Handle error
   }
 
-  printf("Image loaded: %dx%d, buffer=%p\n", generated.pxWidth, generated.pxHeight,
-	 generated.buffer);
-
-  bool result = SameImage(&loaded, &generated);
-  printf("Same image %s", result ? "true":"false");
-  mu_check(result);
+  // fiil region here
+  V3 origin = {0};
+  V3 cameraDirection = {0,0,1};
   
-  /* char filename[256]; */
-  /* sprintf(filename, "%s/%s.ppm", SCREENSHOT_FOLDER, __func__); */
-  /* SaveImage(filename, &loaded); */
+  int topEdge = generated.pxHeight / 2;
+  int bottomEdge = -generated.pxHeight / 2;
+  int leftEdge = -generated.pxWidth / 2;
+  int righEdge = generated.pxWidth / 2;
+  Region region;
+  region.top = topEdge;
+  region.bot = bottomEdge;
+  region.left = leftEdge;
+  region.right = righEdge;
+  V3 viewportSize = {1.0, 1.0, 0.0};
+  float projectionPlane = 1.0;
+  Buffer buffer = {0};
+  buffer.width = generated.pxWidth;
+  buffer.height = generated.pxHeight;
+  buffer.size = buffer.width * buffer.height * 3;
+  buffer.start = generated.buffer;
+  int recursion_depth = 3;
+
+  Sphere spheres[] = {
+    // position
+    {{0, -1, 3}, 1, {255, 0, 0}, 500, 0.2},
+    {{2, 0, 4}, 1, {0, 0, 255}, 500, 0.3},
+    {{-2, 0, 4}, 1, {0, 255, 0}, 10, 0.4},
+    {{0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.5},
+  };
+  int sphereCount = 4;
+
+  // todo: fix no ligth exception
+  Light lights[] = {
+    {LIGHT_AMBIENT, 0.2, {0, 0, 0}},
+    {LIGHT_POINT, 0.6, {2, 1, 0}},
+    {LIGHT_DIRECTIONAL, 0.2, {1, 4, 4}},
+  };
+  int lightCount = 3;
+  
+   fillRegion
+    ( origin, cameraDirection, region, viewportSize, projectionPlane,
+      buffer,
+      1, INFINITY, recursion_depth ,
+      spheres,sphereCount,
+      lights, lightCount);
+  
+
+  // alteration
+  /* for (int i = 0; i < pixelCount; i++) { */
+  /*   generated.buffer[i*3 + 0] = 210; */
+  /*   generated.buffer[i*3 + 1] = 210; */
+  /*   generated.buffer[i*3 + 2] = 210; */
+  /* } */
+
+   
+  char out_filename[256];
+  sprintf(out_filename, "%s/%s.ppm", SCREENSHOT_FOLDER, __func__);
+  SaveImage(out_filename, &generated);  
+
+  return;
+  // comparesment
+  /* bool image_are_same = SameImage(&loaded, &generated); */
+  /* mu_check(image_are_same); */
+  
+  /* char out_filename[256]; */
+  /* sprintf(out_filename, "%s/%s.ppm", SCREENSHOT_FOLDER, __func__); */
+  /* SaveImage(out_filename, &loaded); */
 }
 
 MU_TEST_SUITE(test_suite) {

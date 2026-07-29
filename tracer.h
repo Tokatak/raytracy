@@ -29,10 +29,11 @@ void save(unsigned char* buffer, int widthPixel, int heightPixel, char* fileName
   }
 }
 
-// todo: review
-void save_ppmbuffer(char* fileName, PpmBuffer* buffer){
+
+void ppmbuffer_save(char* fileName, PpmBuffer* buffer){
   save( buffer->buffer, buffer->pxWidth, buffer->pxHeight, fileName );
 }
+
 
 
 #endif
