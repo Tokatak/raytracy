@@ -14,17 +14,34 @@
 
 #define SCREENSHOT_FOLDER "tests"
 
-// todo: move to tracer.h ppm.h
-void LoadImage(char *path, PpmBuffer* result){
-  char fullPath[256];
-  sprintf(fullPath, "./%s.ppm", path);
-  //  sprintf(fullPath, "./tests/%s.ppm", path);
+void appendExtention(char* target,const char* filename){
+  sprintf(target, "%s.ppm", filename);
+}
+
+void appendFolder(char* target, char* filename){
+  sprintf(target, "./%s/%s",SCREENSHOT_FOLDER, filename);
+}
+
+bool fileExists(char* path){
+  FILE *file = fopen(path, "r");
+  if (file != NULL) {
+    return true;
+    fclose(file);
+  } else {
+    return false;
+  }
+}
   
+
+// todo: move to tracer.h ppm.h
+bool LoadImage(char *path, PpmBuffer* result){
+  char* fullPath = path;
+
   // Open the file
   FILE* file = fopen(fullPath, "rb");
   if (!file) {
     printf("Error: Could not open file %s\n", fullPath);
-    return;
+    return false;
   }
   
   // Read PPM header
@@ -36,7 +53,7 @@ void LoadImage(char *path, PpmBuffer* result){
   if (format[0] != 'P' || (format[1] != '3' && format[1] != '6')) {
     printf("Error: Not a valid PPM file\n");
     fclose(file);
-    return;
+    return false;
   }
   
   // Skip comments (lines starting with '#')
@@ -58,7 +75,7 @@ void LoadImage(char *path, PpmBuffer* result){
   if (!result->buffer) {
     printf("Error: Memory allocation failed\n");
     fclose(file);
-    return;
+    return false;
   }
   
   // Read the pixel data
@@ -77,6 +94,7 @@ void LoadImage(char *path, PpmBuffer* result){
   }
   
   fclose(file);
+  return true;
 }
 
 void SaveImage(char* filename, PpmBuffer* ppm){
@@ -108,9 +126,6 @@ bool SameImage(PpmBuffer* stored, PpmBuffer* generated){
     
     int pixelCount = stored->pxWidth * stored->pxHeight * 3;
     for (int i = 0; i < pixelCount; i++) {
-
-      //       printf("Stored %d generated %d", stored->buffer[i], generated->buffer[i]);
-      
         if (stored->buffer[i] != generated->buffer[i]) {
             printf("Images differ at pixel %d (byte %d)\n", i / 3, i % 3);
             return false;
@@ -120,21 +135,13 @@ bool SameImage(PpmBuffer* stored, PpmBuffer* generated){
     return true;
 }
 
-// todo: review cleanp
+// todo: review cleanp this mess
 MU_TEST(test_check) {
   
   mu_check(7 == 7);
   //  PRINT_NAME(test_check);  // Prints: "test_check"
 
-  PpmBuffer loaded = {0};
-
-  char filename[256];
-  sprintf(filename, "%s/%s", SCREENSHOT_FOLDER, __func__);
-  //  printf("LOADING: %s", filename);
   
-  LoadImage(filename, &loaded);
-  //  printf("Image loaded: %dx%d, buffer=%p\n", loaded.pxWidth, loaded.pxHeight, loaded.buffer);
-
   // generate image
   PpmBuffer generated = {0};
   generated.pxWidth = 640;
@@ -188,31 +195,49 @@ MU_TEST(test_check) {
   };
   int lightCount = 3;
   
-   fillRegion
+  fillRegion
     ( origin, cameraDirection, region, viewportSize, projectionPlane,
       buffer,
-      1, INFINITY, recursion_depth ,
+      1, INFINITY, recursion_depth,
       spheres,sphereCount,
       lights, lightCount);
-  
 
-  // alteration
-  /* for (int i = 0; i < pixelCount; i++) { */
-  /*   generated.buffer[i*3 + 0] = 210; */
-  /*   generated.buffer[i*3 + 1] = 210; */
-  /*   generated.buffer[i*3 + 2] = 210; */
-  /* } */
+  // at this point image is generated
 
-   
-  char out_filename[256];
-  sprintf(out_filename, "%s/%s.ppm", SCREENSHOT_FOLDER, __func__);
-  SaveImage(out_filename, &generated);  
+  // loading compare sample
+  PpmBuffer loaded = {0};
 
-  return;
-  // comparesment
-  /* bool image_are_same = SameImage(&loaded, &generated); */
-  /* mu_check(image_are_same); */
-  
+
+  char filenameWithExtension[256];
+  appendExtention(filenameWithExtension, __func__);
+  char filenameWithFolder[256];
+  appendFolder(filenameWithFolder,filenameWithExtension);
+  //  sprintf(filename, "%s/%s", SCREENSHOT_FOLDER, __func__);
+
+  bool exists  = fileExists(filenameWithFolder);
+
+  if( !exists ) {
+    bool reference_screenshot_missing = !exists;
+    // writing rendered
+    printf("Missing reference screnshot, wrigin generated:%s\n", filenameWithFolder);
+    SaveImage(filenameWithFolder, &generated);  
+    mu_check(reference_screenshot_missing);
+    return;
+  }
+
+  bool image_loaded = LoadImage(filenameWithFolder, &loaded);
+  if(!image_loaded){
+    bool reference_screenshot_failed_to_load = !image_loaded;
+    printf("Reference screnshot, failed to load\n");
+    mu_check(reference_screenshot_failed_to_load);
+  }
+
+  // compare
+  bool image_are_same = SameImage(&loaded, &generated);
+  mu_check(image_are_same);
+
+  // todo: save side by side
+
   /* char out_filename[256]; */
   /* sprintf(out_filename, "%s/%s.ppm", SCREENSHOT_FOLDER, __func__); */
   /* SaveImage(out_filename, &loaded); */
