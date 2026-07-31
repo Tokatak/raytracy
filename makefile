@@ -13,11 +13,13 @@ msvc:
 tests-clean:
 	-rm -f test_suite
 tests-build:
-	gcc -Wall  -I./external/minunit	 -I./ ./tests/main.c -o test_suite 
+	gcc -Wall  -I./external/minunit	 -I./ ./tests/main.c -o test_suite
+tests-build-cl:
+	cl /Zi /DEBUG /EHsc /I ./ /I ./external/* ./tests/main.c /Fe:cl_test_suite.exe
 tests-run:
 	test_suite.exe
 test tests: tests-clean tests-build tests-run
-	
+
 # PROFILE
 profile-clean:
 	rm gmon.out && rm executable.exe && rm callgraph.txt
