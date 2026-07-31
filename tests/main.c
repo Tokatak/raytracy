@@ -101,7 +101,78 @@ void SaveImage(char* filename, PpmBuffer* ppm){
   ppmbuffer_save(filename, ppm);
 }
 
-void SaveSideBySide(PpmBuffer* stored, PpmBuffer* generated, char* suffix){
+void SaveSideBySide(PpmBuffer* stored, PpmBuffer* generated, const char* suffix){
+  char path[256]; 
+  int width = stored->pxWidth;
+  int height = stored->pxHeight;
+
+  // todo: push path handling to one place
+  sprintf(path, "./tests/failed/%s.ppm",  (suffix != NULL) ? suffix : "");
+  
+  // Create a PPM buffer with width*3 (RGB) and same height
+  PpmBuffer diff;
+  diff.pxWidth = width * 3;
+  diff.pxHeight = height;
+  diff.buffer = (unsigned char*)malloc(diff.pxWidth * diff.pxHeight * 3); // 3 bytes per pixel (RGB)
+  
+  if (diff.buffer == NULL) {
+    return; // Memory allocation failed
+  }
+  
+  unsigned char* createdPixel;
+  unsigned char* storedPixel;
+  
+  for (int j = 0; j < height; j++) {
+    for (int i = 0; i < (width * 3); i++) {
+      if (i < width) {
+        // left - stored 
+        int srcIndex = (j * width + i) * 3;
+        int dstIndex = (j * diff.pxWidth + i) * 3;
+        diff.buffer[dstIndex] = stored->buffer[srcIndex];
+        diff.buffer[dstIndex + 1] = stored->buffer[srcIndex + 1];
+        diff.buffer[dstIndex + 2] = stored->buffer[srcIndex + 2];
+      }
+      else if (i < (width * 2)) {
+        // compare result:
+        int offset = i - width;
+        int srcIndex = (j * width + offset) * 3;
+        int dstIndex = (j * diff.pxWidth + i) * 3;
+        
+        createdPixel = &generated->buffer[srcIndex];
+        storedPixel = &stored->buffer[srcIndex];
+        
+        if (createdPixel[0] == storedPixel[0] && 
+            createdPixel[1] == storedPixel[1] && 
+            createdPixel[2] == storedPixel[2]) {
+
+	  int color_value = createdPixel[0] + createdPixel[1] + createdPixel[2];
+	  int gray  = color_value / 3; 
+
+          diff.buffer[dstIndex] = gray;
+	  diff.buffer[dstIndex + 1] = gray;
+	  diff.buffer[dstIndex + 2] = gray;
+	  
+        } else {
+          // hilight difference
+          diff.buffer[dstIndex] = 255;
+          diff.buffer[dstIndex + 1] = 0;
+          diff.buffer[dstIndex + 2] = 0;
+        }
+      }
+      else {
+	// generated - right
+        int offset = i - width * 2;
+        int srcIndex = (j * width + offset) * 3;
+        int dstIndex = (j * diff.pxWidth + i) * 3;
+        diff.buffer[dstIndex] = generated->buffer[srcIndex];
+        diff.buffer[dstIndex + 1] = generated->buffer[srcIndex + 1];
+        diff.buffer[dstIndex + 2] = generated->buffer[srcIndex + 2];
+      }
+    }
+  }
+  
+  ppmbuffer_save(path, &diff);
+  free(diff.buffer);
   
 }
 
@@ -144,8 +215,11 @@ MU_TEST(test_check) {
   
   // generate image
   PpmBuffer generated = {0};
-  generated.pxWidth = 640;
-  generated.pxHeight = 480;
+  /* generated.pxWidth = 640; */
+  /* generated.pxHeight = 480; */
+
+  generated.pxWidth = 100;
+  generated.pxHeight = 100;
 
   int pixelCount = generated.pxWidth * generated.pxHeight;
   int byteCount = pixelCount * 3;
@@ -234,9 +308,11 @@ MU_TEST(test_check) {
 
   // compare
   bool image_are_same = SameImage(&loaded, &generated);
+  if( !image_are_same){
+    SaveSideBySide(&loaded, &generated, __func__);
+  }
   mu_check(image_are_same);
 
-  // todo: save side by side
 
   /* char out_filename[256]; */
   /* sprintf(out_filename, "%s/%s.ppm", SCREENSHOT_FOLDER, __func__); */
