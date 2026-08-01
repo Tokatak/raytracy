@@ -33,185 +33,25 @@ bool fileExists(char* path){
 }
   
 
-// todo: move to tracer.h ppm.h
-bool LoadImage(char *path, PpmBuffer* result){
-  char* fullPath = path;
-
-  // Open the file
-  FILE* file = fopen(fullPath, "rb");
-  if (!file) {
-    printf("Error: Could not open file %s\n", fullPath);
-    return false;
-  }
-  
-  // Read PPM header
-  char format[3];
-  int maxColor;
-  
-  // Read magic number (P3 or P6)
-  fscanf(file, "%2s", format);
-  if (format[0] != 'P' || (format[1] != '3' && format[1] != '6')) {
-    printf("Error: Not a valid PPM file\n");
-    fclose(file);
-    return false;
-  }
-  
-  // Skip comments (lines starting with '#')
-  char c = fgetc(file);
-  while (c == '#') {
-    while (c != '\n') c = fgetc(file);
-    c = fgetc(file);
-  }
-  ungetc(c, file);
-  
-  // Read width and height
-  fscanf(file, "%d %d", &result->pxWidth, &result->pxHeight);
-  
-  // Read max color value
-  fscanf(file, "%d", &maxColor);
-  
-  // Allocate buffer for the image data
-  result->buffer = (unsigned char*)malloc(result->pxWidth * result->pxHeight * 3);
-  if (!result->buffer) {
-    printf("Error: Memory allocation failed\n");
-    fclose(file);
-    return false;
-  }
-  
-  // Read the pixel data
-  if (format[1] == '6') {
-    // P6 - Binary format
-    fread(result->buffer, 1, result->pxWidth * result->pxHeight * 3, file);
-  } else {
-    // P3 - ASCII format
-    int r, g, b;
-    for (int i = 0; i < result->pxWidth * result->pxHeight; i++) {
-      fscanf(file, "%d %d %d", &r, &g, &b);
-      result->buffer[i * 3 + 0] = (unsigned char)r;
-      result->buffer[i * 3 + 1] = (unsigned char)g;
-      result->buffer[i * 3 + 2] = (unsigned char)b;
-    }
-  }
-  
-  fclose(file);
-  return true;
-}
-
-void SaveImage(char* filename, PpmBuffer* ppm){
-  ppmbuffer_save(filename, ppm);
-}
-
 void SaveSideBySide(PpmBuffer* stored, PpmBuffer* generated, const char* suffix){
   char path[256]; 
-  int width = stored->pxWidth;
-  int height = stored->pxHeight;
 
   // todo: push path handling to one place
   sprintf(path, "./tests/failed/%s.ppm",  (suffix != NULL) ? suffix : "");
-  
-  // Create a PPM buffer with width*3 (RGB) and same height
+
   PpmBuffer diff;
-  diff.pxWidth = width * 3;
-  diff.pxHeight = height;
-  diff.buffer = (unsigned char*)malloc(diff.pxWidth * diff.pxHeight * 3); // 3 bytes per pixel (RGB)
-  
-  if (diff.buffer == NULL) {
-    return; // Memory allocation failed
-  }
-  
-  unsigned char* createdPixel;
-  unsigned char* storedPixel;
-  
-  for (int j = 0; j < height; j++) {
-    for (int i = 0; i < (width * 3); i++) {
-      if (i < width) {
-        // left - stored 
-        int srcIndex = (j * width + i) * 3;
-        int dstIndex = (j * diff.pxWidth + i) * 3;
-        diff.buffer[dstIndex] = stored->buffer[srcIndex];
-        diff.buffer[dstIndex + 1] = stored->buffer[srcIndex + 1];
-        diff.buffer[dstIndex + 2] = stored->buffer[srcIndex + 2];
-      }
-      else if (i < (width * 2)) {
-        // compare result:
-        int offset = i - width;
-        int srcIndex = (j * width + offset) * 3;
-        int dstIndex = (j * diff.pxWidth + i) * 3;
-        
-        createdPixel = &generated->buffer[srcIndex];
-        storedPixel = &stored->buffer[srcIndex];
-        
-        if (createdPixel[0] == storedPixel[0] && 
-            createdPixel[1] == storedPixel[1] && 
-            createdPixel[2] == storedPixel[2]) {
-
-	  int color_value = createdPixel[0] + createdPixel[1] + createdPixel[2];
-	  int gray  = color_value / 3; 
-
-          diff.buffer[dstIndex] = gray;
-	  diff.buffer[dstIndex + 1] = gray;
-	  diff.buffer[dstIndex + 2] = gray;
-	  
-        } else {
-          // hilight difference
-          diff.buffer[dstIndex] = 255;
-          diff.buffer[dstIndex + 1] = 0;
-          diff.buffer[dstIndex + 2] = 0;
-        }
-      }
-      else {
-	// generated - right
-        int offset = i - width * 2;
-        int srcIndex = (j * width + offset) * 3;
-        int dstIndex = (j * diff.pxWidth + i) * 3;
-        diff.buffer[dstIndex] = generated->buffer[srcIndex];
-        diff.buffer[dstIndex + 1] = generated->buffer[srcIndex + 1];
-        diff.buffer[dstIndex + 2] = generated->buffer[srcIndex + 2];
-      }
-    }
-  }
+  ppmbuffer_compare_combine(stored, generated, &diff);
   
   ppmbuffer_save(path, &diff);
   free(diff.buffer);
   
 }
 
-bool SameImage(PpmBuffer* stored, PpmBuffer* generated){
-    if (!stored || !generated) {
-        printf("Error: NULL pointer passed to SameImage\n");
-        return false;
-    }
-    
-    if (!stored->buffer || !generated->buffer) {
-        printf("Error: One or both buffers are NULL\n");
-        return false;
-    }
-
-    if (stored->pxWidth != generated->pxWidth || 
-        stored->pxHeight != generated->pxHeight) {
-        printf("Image dimensions differ: (%dx%d) vs (%dx%d)\n", 
-               stored->pxWidth, stored->pxHeight, 
-               generated->pxWidth, generated->pxHeight);
-        return false;
-    }
-    
-    int pixelCount = stored->pxWidth * stored->pxHeight * 3;
-    for (int i = 0; i < pixelCount; i++) {
-        if (stored->buffer[i] != generated->buffer[i]) {
-            printf("Images differ at pixel %d (byte %d)\n", i / 3, i % 3);
-            return false;
-        }
-    }
-    
-    return true;
-}
 
 // todo: review cleanp this mess
 MU_TEST(test_check) {
   
   mu_check(7 == 7);
-  //  PRINT_NAME(test_check);  // Prints: "test_check"
-
   
   // generate image
   PpmBuffer generated = {0};
@@ -294,12 +134,12 @@ MU_TEST(test_check) {
     bool reference_screenshot_missing = !exists;
     // writing rendered
     printf("Missing reference screnshot, wrigin generated:%s\n", filenameWithFolder);
-    SaveImage(filenameWithFolder, &generated);  
+    ppmbuffer_save(filenameWithFolder, &generated);  
     mu_check(reference_screenshot_missing);
     return;
   }
 
-  bool image_loaded = LoadImage(filenameWithFolder, &loaded);
+  bool image_loaded = ppmbuffer_load(filenameWithFolder, &loaded);
   if(!image_loaded){
     bool reference_screenshot_failed_to_load = !image_loaded;
     printf("Reference screnshot, failed to load\n");
@@ -307,7 +147,7 @@ MU_TEST(test_check) {
   }
 
   // compare
-  bool image_are_same = SameImage(&loaded, &generated);
+  bool image_are_same = ppmbuffer_same(&loaded, &generated);
   if( !image_are_same){
     SaveSideBySide(&loaded, &generated, __func__);
   }

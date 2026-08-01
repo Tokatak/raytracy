@@ -2,6 +2,7 @@
 #define PPM_H
 
 #include <stdio.h>
+#include <stdlib.h>
 
 // always assuming 256 color mode
 typedef struct 
@@ -29,11 +30,177 @@ void save(unsigned char* buffer, int widthPixel, int heightPixel, char* fileName
   }
 }
 
-
 void ppmbuffer_save(char* fileName, PpmBuffer* buffer){
   save( buffer->buffer, buffer->pxWidth, buffer->pxHeight, fileName );
 }
 
+bool ppmbuffer_load(char *path, PpmBuffer* result){
+    char* fullPath = path;
+
+  // Open the file
+  FILE* file = fopen(fullPath, "rb");
+  if (!file) {
+    printf("Error: Could not open file %s\n", fullPath);
+    return false;
+  }
+  
+  // header
+  char format[3];
+  int maxColor;
+  
+  // (P3 or P6)
+  fscanf(file, "%2s", format);
+  if (format[0] != 'P' || (format[1] != '3' && format[1] != '6')) {
+    printf("Error: Not a valid PPM file\n");
+    fclose(file);
+    return false;
+  }
+  
+  // Skip comments
+  char c = fgetc(file);
+  while (c == '#') {
+    while (c != '\n') c = fgetc(file);
+    c = fgetc(file);
+  }
+  ungetc(c, file);
+  
+  // Read width and height
+  fscanf(file, "%d %d", &result->pxWidth, &result->pxHeight);
+  
+  // Read max color value
+  fscanf(file, "%d", &maxColor);
+  
+  // Allocate buffer for the image data
+  result->buffer = (unsigned char*)malloc(result->pxWidth * result->pxHeight * 3);
+  if (!result->buffer) {
+    printf("Error: Memory allocation failed\n");
+    fclose(file);
+    return false;
+  }
+  
+  // Read the pixel data
+  if (format[1] == '6') {
+    // P6 - Binary format
+    fread(result->buffer, 1, result->pxWidth * result->pxHeight * 3, file);
+  } else {
+    // P3 - ASCII format
+    int r, g, b;
+    for (int i = 0; i < result->pxWidth * result->pxHeight; i++) {
+      fscanf(file, "%d %d %d", &r, &g, &b);
+      result->buffer[i * 3 + 0] = (unsigned char)r;
+      result->buffer[i * 3 + 1] = (unsigned char)g;
+      result->buffer[i * 3 + 2] = (unsigned char)b;
+    }
+  }
+  
+  fclose(file);
+  return true;
+}
+
+bool ppmbuffer_same(PpmBuffer* abuffer, PpmBuffer* bbuffer){
+    if (!abuffer || !bbuffer) {
+        printf("Error: NULL pointer passed to SameImage\n");
+        return false;
+    }
+    
+    if (!abuffer->buffer || !bbuffer->buffer) {
+        printf("Error: One or both buffers are NULL\n");
+        return false;
+    }
+
+    if (abuffer->pxWidth != bbuffer->pxWidth || 
+        abuffer->pxHeight != bbuffer->pxHeight) {
+        printf("Image dimensions differ: (%dx%d) vs (%dx%d)\n", 
+               abuffer->pxWidth, abuffer->pxHeight, 
+               bbuffer->pxWidth, bbuffer->pxHeight);
+        return false;
+    }
+    
+    int pixelCount = abuffer->pxWidth * abuffer->pxHeight * 3;
+    for (int i = 0; i < pixelCount; i++) {
+        if (abuffer->buffer[i] != bbuffer->buffer[i]) {
+            printf("Images differ at pixel %d (byte %d)\n", i / 3, i % 3);
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+bool ppmbuffer_compare_combine(PpmBuffer* abuffer, PpmBuffer* bbuffer, PpmBuffer* result){
+  if(abuffer->pxWidth != bbuffer->pxWidth ||
+     abuffer->pxHeight != bbuffer->pxHeight )
+    {
+      printf("Not Implemented");
+      return false;
+    }
+
+  int width = abuffer->pxWidth;
+  int height = abuffer->pxHeight;
+
+  result->pxWidth = width * 3;
+  result->pxHeight = height;
+  result->buffer = (unsigned char*)malloc(result->pxWidth * result->pxHeight * 3); // 3 bytes per pixel (RGB)
+  
+  if (result->buffer == NULL) {
+    return false; // Memory allocation failed
+  }
+
+  unsigned char* createdPixel;
+  unsigned char* storedPixel;
+  
+  for (int j = 0; j < height; j++) {
+    for (int i = 0; i < (width * 3); i++) {
+      if (i < width) {
+        // left - stored 
+        int srcIndex = (j * width + i) * 3;
+        int dstIndex = (j * result->pxWidth + i) * 3;
+        result->buffer[dstIndex] = abuffer->buffer[srcIndex];
+        result->buffer[dstIndex + 1] = abuffer->buffer[srcIndex + 1];
+        result->buffer[dstIndex + 2] = abuffer->buffer[srcIndex + 2];
+      }
+      else if (i < (width * 2)) {
+        // compare result:
+        int offset = i - width;
+        int srcIndex = (j * width + offset) * 3;
+        int dstIndex = (j * result->pxWidth + i) * 3;
+        
+        createdPixel = &bbuffer->buffer[srcIndex];
+        storedPixel = &abuffer->buffer[srcIndex];
+        
+        if (createdPixel[0] == storedPixel[0] && 
+            createdPixel[1] == storedPixel[1] && 
+            createdPixel[2] == storedPixel[2]) {
+
+	  int color_value = createdPixel[0] + createdPixel[1] + createdPixel[2];
+	  int gray  = color_value / 3; 
+
+          result->buffer[dstIndex] = gray;
+	  result->buffer[dstIndex + 1] = gray;
+	  result->buffer[dstIndex + 2] = gray;
+	  
+        } else {
+          // hilight resulterence
+          result->buffer[dstIndex] = 255;
+          result->buffer[dstIndex + 1] = 0;
+          result->buffer[dstIndex + 2] = 0;
+        }
+      }
+      else {
+	// bbuffer - right
+        int offset = i - width * 2;
+        int srcIndex = (j * width + offset) * 3;
+        int dstIndex = (j * result->pxWidth + i) * 3;
+        result->buffer[dstIndex] = bbuffer->buffer[srcIndex];
+        result->buffer[dstIndex + 1] = bbuffer->buffer[srcIndex + 1];
+        result->buffer[dstIndex + 2] = bbuffer->buffer[srcIndex + 2];
+      }
+    }
+  }
+
+
+  return true;
+}
 
 
 #endif
