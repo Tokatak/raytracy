@@ -44,119 +44,126 @@ void SaveSideBySide(PpmBuffer* stored, PpmBuffer* generated, const char* suffix)
   
   ppmbuffer_save(path, &diff);
   free(diff.buffer);
-  
 }
 
+const V3 DEFAULT_VIEWPORT = { 640, 480, 0};
+const V3 DEFAULT_ORIGIN = {0};
+const V3 DEFAULT_CAMERADIRECTION = {0,0,1};
+// top, bot, left, right
+// for default viewport
+const Region DEFAULT_REGION = { 240, -240, -320, 320 };
+const V3 DEFAULT_VIEWPORTSIZE = {1.0, 1.0, 1.0};
+const float DEFAULT_PROJECTIONPLANE = 1.0;
+const int DEFAULT_RECURSION_DEPTH = 3;
+
+const Sphere DEFAULT_SPHERES[] = {
+  // position
+  {{0, -1, 3}, 1, {255, 0, 0}, 500, 0.2},
+  {{2, 0, 4}, 1, {0, 0, 255}, 500, 0.3},
+  {{-2, 0, 4}, 1, {0, 255, 0}, 10, 0.4},
+  {{0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.5},
+};
+static const int DEFAULT_SPHERE_COUNT = sizeof(DEFAULT_SPHERES) / sizeof(DEFAULT_SPHERES[0]);
+
+const Light DEFAULT_LIGHTS[] = {
+  {LIGHT_AMBIENT, 0.2, {0, 0, 0}},
+  {LIGHT_POINT, 0.6, {2, 1, 0}},
+  {LIGHT_DIRECTIONAL, 0.2, {1, 4, 4}},
+};
+static const int DEFAULT_LIGHT_COUNT = sizeof(DEFAULT_LIGHTS) / sizeof(DEFAULT_LIGHTS[0]);
+
+// todo: rename 
+bool prepare_ppmBuffer(PpmBuffer* ppmBuffer){
+  ppmBuffer->pxWidth = DEFAULT_VIEWPORT.x;
+  ppmBuffer->pxHeight = DEFAULT_VIEWPORT.y;
+
+  int pixelCount = ppmBuffer->pxWidth * ppmBuffer->pxHeight;
+  int byteCount = pixelCount * 3;
+  ppmBuffer->buffer = (unsigned char*)malloc(byteCount);
+  if (!ppmBuffer->buffer) {
+    printf("Memory allocation failed\n");    
+    return 1;
+  }
+  
+  return 0;
+}
+
+void prepare_renderBuffer(Buffer* renderBuffer, PpmBuffer* target){
+  
+  renderBuffer->width = target->pxWidth;
+  renderBuffer->height = target->pxHeight;
+  renderBuffer->size = renderBuffer->width * renderBuffer->height * 3;
+  renderBuffer->start = target->buffer;  
+}
 
 // todo: review cleanp this mess
 MU_TEST(test_check) {
   
-  mu_check(7 == 7);
-  
-  // generate image
   PpmBuffer generated = {0};
-  /* generated.pxWidth = 640; */
-  /* generated.pxHeight = 480; */
-
-  generated.pxWidth = 100;
-  generated.pxHeight = 100;
-
-  int pixelCount = generated.pxWidth * generated.pxHeight;
-  int byteCount = pixelCount * 3;
- 
-  generated.buffer = (unsigned char*)malloc(byteCount);
-  if (!generated.buffer) {
-    printf("Memory allocation failed\n");
-    //todo:  Handle error
+  if(!prepare_ppmBuffer(&generated)){
+    printf("Test failed. Failed to prepare generated buffer.");
+    return;
   }
 
-  // fiil region here
-  V3 origin = {0};
-  V3 cameraDirection = {0,0,1};
+  Buffer render_buffer = {0};
+  prepare_renderBuffer(&render_buffer, &generated);
   
-  int topEdge = generated.pxHeight / 2;
-  int bottomEdge = -generated.pxHeight / 2;
-  int leftEdge = -generated.pxWidth / 2;
-  int righEdge = generated.pxWidth / 2;
-  Region region;
-  region.top = topEdge;
-  region.bot = bottomEdge;
-  region.left = leftEdge;
-  region.right = righEdge;
-  V3 viewportSize = {1.0, 1.0, 0.0};
-  float projectionPlane = 1.0;
-  Buffer buffer = {0};
-  buffer.width = generated.pxWidth;
-  buffer.height = generated.pxHeight;
-  buffer.size = buffer.width * buffer.height * 3;
-  buffer.start = generated.buffer;
-  int recursion_depth = 3;
+  PpmBuffer loaded = {0};
+  if(!prepare_ppmBuffer(&loaded)){
+    printf("Test failed. Failed to prepared loaded buffer.");
+    return;
+  }  
+  
+  Sphere spheres[DEFAULT_SPHERE_COUNT];
+  memcpy(spheres, DEFAULT_SPHERES, sizeof(DEFAULT_SPHERES));
+  int sphere_count = DEFAULT_SPHERE_COUNT;
 
-  Sphere spheres[] = {
-    // position
-    {{0, -1, 3}, 1, {255, 0, 0}, 500, 0.2},
-    {{2, 0, 4}, 1, {0, 0, 255}, 500, 0.3},
-    {{-2, 0, 4}, 1, {0, 255, 0}, 10, 0.4},
-    {{0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.5},
-  };
-  int sphereCount = 4;
-
-  // todo: fix no ligth exception
-  Light lights[] = {
-    {LIGHT_AMBIENT, 0.2, {0, 0, 0}},
-    {LIGHT_POINT, 0.6, {2, 1, 0}},
-    {LIGHT_DIRECTIONAL, 0.2, {1, 4, 4}},
-  };
-  int lightCount = 3;
+  Light lights[DEFAULT_LIGHT_COUNT];
+  memcpy(lights, DEFAULT_LIGHTS, sizeof(DEFAULT_LIGHTS));
+  int light_count = DEFAULT_LIGHT_COUNT;
   
   fillRegion
-    ( origin, cameraDirection, region, viewportSize, projectionPlane,
-      buffer,
-      1, INFINITY, recursion_depth,
-      spheres,sphereCount,
-      lights, lightCount);
+    ( DEFAULT_ORIGIN,
+      DEFAULT_CAMERADIRECTION,
+      DEFAULT_REGION,
+      DEFAULT_VIEWPORTSIZE,
+      DEFAULT_PROJECTIONPLANE,
+      render_buffer,
+      1, INFINITY,
+      DEFAULT_RECURSION_DEPTH,
+      spheres, sphere_count,
+      lights, light_count);
 
-  // at this point image is generated
 
   // loading compare sample
-  PpmBuffer loaded = {0};
-
-
   char filenameWithExtension[256];
   appendExtention(filenameWithExtension, __func__);
   char filenameWithFolder[256];
   appendFolder(filenameWithFolder,filenameWithExtension);
-  //  sprintf(filename, "%s/%s", SCREENSHOT_FOLDER, __func__);
-
-  bool exists  = fileExists(filenameWithFolder);
-
-  if( !exists ) {
-    bool reference_screenshot_missing = !exists;
-    // writing rendered
+    
+  if(!fileExists(filenameWithFolder)) {
+    bool reference_screenshot_missing = false;
     printf("Missing reference screnshot, wrigin generated:%s\n", filenameWithFolder);
     ppmbuffer_save(filenameWithFolder, &generated);  
     mu_check(reference_screenshot_missing);
     return;
   }
 
-  bool image_loaded = ppmbuffer_load(filenameWithFolder, &loaded);
-  if(!image_loaded){
-    bool reference_screenshot_failed_to_load = !image_loaded;
+  if(!ppmbuffer_load_into(filenameWithFolder, &loaded)){
+    bool reference_screenshot_failed_to_load = false;
     printf("Reference screnshot, failed to load\n");
     mu_check(reference_screenshot_failed_to_load);
+    return;
   }
 
-  // compare
   bool image_are_same = ppmbuffer_same(&loaded, &generated);
   if( !image_are_same){
     SaveSideBySide(&loaded, &generated, __func__);
   }
   mu_check(image_are_same);
 
-
-  /* char out_filename[256]; */
-  /* sprintf(out_filename, "%s/%s.ppm", SCREENSHOT_FOLDER, __func__); */
-  /* SaveImage(out_filename, &loaded); */
+  free(generated.buffer);
+  free(loaded.buffer);
 }
 
 MU_TEST_SUITE(test_suite) {

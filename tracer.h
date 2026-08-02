@@ -13,6 +13,12 @@ typedef struct
 
 } PpmBuffer;
 
+void save(unsigned char* buffer, int widthPixel, int heightPixel, char* fileName);
+void ppmbuffer_save(char* fileName, PpmBuffer* buffer);
+bool ppmbuffer_load(char *path, PpmBuffer* result);
+bool ppmbuffer_load_into(char *path, PpmBuffer* result);
+bool ppmbuffer_same(PpmBuffer* abuffer, PpmBuffer* bbuffer);
+bool ppmbuffer_compare_combine(PpmBuffer* abuffer, PpmBuffer* bbuffer, PpmBuffer* result);
 
 void save(unsigned char* buffer, int widthPixel, int heightPixel, char* fileName){
   FILE *fptr;
@@ -97,6 +103,75 @@ bool ppmbuffer_load(char *path, PpmBuffer* result){
   return true;
 }
 
+bool ppmbuffer_load_into(char *path, PpmBuffer* result){
+    char* fullPath = path;
+
+  // Open the file
+  FILE* file = fopen(fullPath, "rb");
+  if (!file) {
+    printf("Error: Could not open file %s\n", fullPath);
+    return false;
+  }
+  
+  // header
+  char format[3];
+  int maxColor;
+  
+  // (P3 or P6)
+  fscanf(file, "%2s", format);
+  if (format[0] != 'P' || (format[1] != '3' && format[1] != '6')) {
+    printf("Error: Not a valid PPM file\n");
+    fclose(file);
+    return false;
+  }
+  
+  // Skip comments
+  char c = fgetc(file);
+  while (c == '#') {
+    while (c != '\n') c = fgetc(file);
+    c = fgetc(file);
+  }
+  ungetc(c, file);
+  
+  // Read width and height
+  int file_width;
+  int file_height;
+  fscanf(file, "%d %d", &file_width, &file_height);
+
+  if( file_width != result->pxWidth || file_height != result->pxHeight){
+    printf("Error: result/file width/height missmatch.\n");
+    fclose(file);
+    return false;
+  }
+  
+  // Read max color value
+  fscanf(file, "%d", &maxColor);
+
+  if( result->buffer == NULL){
+    printf("Error: result->buffer non allocaed.\n");
+    fclose(file);
+    return false;
+  }
+
+  // Read the pixel data
+  if (format[1] == '6') {
+    // P6 - Binary format
+    fread(result->buffer, 1, result->pxWidth * result->pxHeight * 3, file);
+  } else {
+    // P3 - ASCII format
+    int r, g, b;
+    for (int i = 0; i < result->pxWidth * result->pxHeight; i++) {
+      fscanf(file, "%d %d %d", &r, &g, &b);
+      result->buffer[i * 3 + 0] = (unsigned char)r;
+      result->buffer[i * 3 + 1] = (unsigned char)g;
+      result->buffer[i * 3 + 2] = (unsigned char)b;
+    }
+  }
+  
+  fclose(file);
+  return true;
+}
+
 bool ppmbuffer_same(PpmBuffer* abuffer, PpmBuffer* bbuffer){
     if (!abuffer || !bbuffer) {
         printf("Error: NULL pointer passed to SameImage\n");
@@ -131,7 +206,7 @@ bool ppmbuffer_compare_combine(PpmBuffer* abuffer, PpmBuffer* bbuffer, PpmBuffer
   if(abuffer->pxWidth != bbuffer->pxWidth ||
      abuffer->pxHeight != bbuffer->pxHeight )
     {
-      printf("Not Implemented");
+      printf("Not Implemented: compare buffers of different dimensions.");
       return false;
     }
 
