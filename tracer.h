@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 // always assuming 256 color mode
 typedef struct 
@@ -15,7 +16,7 @@ typedef struct
 
 //todo: depricate
 void save(unsigned char* buffer, int widthPixel, int heightPixel, char* fileName);
-// theese are ok
+// gthees
 void ppmbuffer_save(char* fileName, PpmBuffer* buffer);
 bool ppmbuffer_load(char *path, PpmBuffer* result);
 bool ppmbuffer_load_into(char *path, PpmBuffer* result);

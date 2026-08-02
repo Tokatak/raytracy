@@ -29,7 +29,7 @@ void screenshotFromTestname(char* target, const char* testName){
 }
 
 void screenshotFromTestnameFailed(char* target, const char* testName){
-  // todo
+  sprintf(target, "./tests/failed/%s.ppm", testName);
 }
 
 bool fileExists(char* path){
@@ -43,18 +43,49 @@ bool fileExists(char* path){
 }
   
 
-void SaveSideBySide(PpmBuffer* stored, PpmBuffer* generated, const char* suffix){
-  char path[256]; 
-
-  // todo: push path handling to one place
-  sprintf(path, "./tests/failed/%s.ppm",  (suffix != NULL) ? suffix : "");
-
+// todo: const friendly
+void CompareCombineSave(PpmBuffer* stored, PpmBuffer* generated, const char* path){
+  char tmp[256];
+  sprintf(tmp, "%s", path);
+  
   PpmBuffer diff;
   ppmbuffer_compare_combine(stored, generated, &diff);
   
-  ppmbuffer_save(path, &diff);
+  ppmbuffer_save(tmp, &diff);
   free(diff.buffer);
 }
+
+
+
+// NOTE!! MACRO AND ARRAY possible mismatch!
+#define DEFAULT_SPHERE_COUNT 4
+//static const int DEFAULT_SPHERE_COUNT = sizeof(DEFAULT_SPHERES) / sizeof(DEFAULT_SPHERES[0]);
+const Sphere DEFAULT_SPHERES[] = {
+  // position
+  {{0, -1, 3}, 1, {255, 0, 0}, 500, 0.2},
+  {{2, 0, 4}, 1, {0, 0, 255}, 500, 0.3},
+  {{-2, 0, 4}, 1, {0, 255, 0}, 10, 0.4},
+  {{0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.5},
+};
+
+// NOTE!! possible mismatch
+#define DEFAULT_LIGHT_COUNT 3
+//static const int DEFAULT_LIGHT_COUNT = sizeof(DEFAULT_LIGHTS) / sizeof(DEFAULT_LIGHTS[0]);
+const Light DEFAULT_LIGHTS[] = {
+  {LIGHT_AMBIENT, 0.2, {0, 0, 0}},
+  {LIGHT_POINT, 0.6, {2, 1, 0}},
+  {LIGHT_DIRECTIONAL, 0.2, {1, 4, 4}},
+};
+
+typedef struct{
+  PpmBuffer generated;
+  PpmBuffer loaded;
+  Buffer render_buffer;
+  Sphere spheres[DEFAULT_SPHERE_COUNT];
+  Light lights[DEFAULT_LIGHT_COUNT];
+  char screenshot_path[256];
+  char failed_screenshot_path[256]; // todo: remove, dont' like it
+} RenderTestContext;
 
 const V3 DEFAULT_VIEWPORT = { 640, 480, 0};
 const V3 DEFAULT_ORIGIN = {0};
@@ -66,23 +97,7 @@ const V3 DEFAULT_VIEWPORTSIZE = {1.0, 1.0, 1.0};
 const float DEFAULT_PROJECTIONPLANE = 1.0;
 const int DEFAULT_RECURSION_DEPTH = 3;
 
-const Sphere DEFAULT_SPHERES[] = {
-  // position
-  {{0, -1, 3}, 1, {255, 0, 0}, 500, 0.2},
-  {{2, 0, 4}, 1, {0, 0, 255}, 500, 0.3},
-  {{-2, 0, 4}, 1, {0, 255, 0}, 10, 0.4},
-  {{0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.5},
-};
-static const int DEFAULT_SPHERE_COUNT = sizeof(DEFAULT_SPHERES) / sizeof(DEFAULT_SPHERES[0]);
 
-const Light DEFAULT_LIGHTS[] = {
-  {LIGHT_AMBIENT, 0.2, {0, 0, 0}},
-  {LIGHT_POINT, 0.6, {2, 1, 0}},
-  {LIGHT_DIRECTIONAL, 0.2, {1, 4, 4}},
-};
-static const int DEFAULT_LIGHT_COUNT = sizeof(DEFAULT_LIGHTS) / sizeof(DEFAULT_LIGHTS[0]);
-
-// todo: rename 
 bool prepare_ppmBuffer(PpmBuffer* ppmBuffer){
   ppmBuffer->pxWidth = DEFAULT_VIEWPORT.x;
   ppmBuffer->pxHeight = DEFAULT_VIEWPORT.y;
@@ -106,76 +121,78 @@ void prepare_renderBuffer(Buffer* renderBuffer, PpmBuffer* target){
   renderBuffer->start = target->buffer;  
 }
 
-// todo: review cleanp this mess
-MU_TEST(test_check) {  
-  PpmBuffer generated = {0};
-  if(prepare_ppmBuffer(&generated)){    
-    mu_fail("Test failed. Failed to prepare generated buffer.");
-    return;
+RenderTestContext* create_context(const char* test_name){
+  RenderTestContext* ctx = calloc(1, sizeof(RenderTestContext));
+
+  prepare_ppmBuffer(&(ctx->generated));
+  prepare_ppmBuffer(&(ctx->loaded));
+  prepare_renderBuffer(&(ctx->render_buffer),&(ctx->generated));
+
+  memcpy(ctx->spheres, DEFAULT_SPHERES, sizeof(DEFAULT_SPHERES));
+  memcpy(ctx->lights, DEFAULT_LIGHTS, sizeof(DEFAULT_LIGHTS));
+
+  screenshotFromTestname(ctx->screenshot_path, test_name);
+  screenshotFromTestnameFailed(ctx->failed_screenshot_path, test_name);
+
+  return ctx;
+}
+
+void render_test_scene(RenderTestContext* ctx){
+  fillRegion(
+	     DEFAULT_ORIGIN,
+	     DEFAULT_CAMERADIRECTION,
+	     DEFAULT_REGION,
+	     DEFAULT_VIEWPORTSIZE,
+	     DEFAULT_PROJECTIONPLANE,
+	     ctx->render_buffer,
+	     1, INFINITY,
+	     DEFAULT_RECURSION_DEPTH,
+	     ctx->spheres, DEFAULT_SPHERE_COUNT,
+	     ctx->lights, DEFAULT_LIGHT_COUNT
+	     );
+}
+
+// consider: exposing more verbosed fail reason
+bool validate_test_result(RenderTestContext* ctx){
+  if(!fileExists(ctx->screenshot_path)) {
+    printf("Missing reference screnshot, wrigin generated:%s\n", ctx->screenshot_path);
+    ppmbuffer_save(ctx->screenshot_path, &(ctx->generated));
+    return false;
   }
 
-  Buffer render_buffer = {0};
-  prepare_renderBuffer(&render_buffer, &generated);
-  
-  PpmBuffer loaded = {0};
-  if(prepare_ppmBuffer(&loaded)){
-    mu_fail("Test failed. Failed to prepared loaded buffer.");
-    return;
-  }  
-  
-  Sphere spheres[DEFAULT_SPHERE_COUNT];
-  memcpy(spheres, DEFAULT_SPHERES, sizeof(DEFAULT_SPHERES));
-  int sphere_count = DEFAULT_SPHERE_COUNT;
-
-  Light lights[DEFAULT_LIGHT_COUNT];
-  memcpy(lights, DEFAULT_LIGHTS, sizeof(DEFAULT_LIGHTS));
-  int light_count = DEFAULT_LIGHT_COUNT;
-  
-  fillRegion
-    ( DEFAULT_ORIGIN,
-      DEFAULT_CAMERADIRECTION,
-      DEFAULT_REGION,
-      DEFAULT_VIEWPORTSIZE,
-      DEFAULT_PROJECTIONPLANE,
-      render_buffer,
-      1, INFINITY,
-      DEFAULT_RECURSION_DEPTH,
-      spheres, sphere_count,
-      lights, light_count);
-
-
-  // loading compare sample
-  char screenshotPath[256];
-  screenshotFromTestname(screenshotPath, __func__);
-
-  if(!fileExists(screenshotPath)) {
-    char tmp[512];
-    sprintf(tmp,"Missing reference screnshot, wrigin generated:%s\n", screenshotPath);
-    ppmbuffer_save(screenshotPath, &generated);
-    mu_fail(tmp);
-    return;
+  if(!ppmbuffer_load_into(ctx->screenshot_path, &(ctx->loaded))){
+    printf("Reference screnshot, failed to load\n");
+    return false;
   }
 
-  if(!ppmbuffer_load_into(screenshotPath, &loaded)){
-    char tmp[512];
-    sprintf(tmp,"Reference screnshot, failed to load\n");
-    mu_fail(tmp);
-    return;
-  }
-
-  bool image_are_same = ppmbuffer_same(&loaded, &generated);
+  bool image_are_same = ppmbuffer_same(&(ctx->loaded), &(ctx->generated));
   if(!image_are_same){
-    SaveSideBySide(&loaded, &generated, __func__);
+    CompareCombineSave(&(ctx->loaded),
+		   &(ctx->generated),
+		   ctx->failed_screenshot_path);
   }
-  
-  mu_check(image_are_same);
 
-  free(generated.buffer);
-  free(loaded.buffer);
+  return image_are_same;    
+}
+
+void destroy_render_test(RenderTestContext* ctx) {
+    free(ctx->generated.buffer);
+    free(ctx->loaded.buffer);
+    free(ctx);
+}
+
+MU_TEST(default_scene) {
+    RenderTestContext* ctx = create_context(__func__);
+    
+    render_test_scene(ctx);
+    bool passed = validate_test_result(ctx);
+    
+    mu_check(passed);
+    destroy_render_test(ctx);
 }
 
 MU_TEST_SUITE(test_suite) {
-  MU_RUN_TEST(test_check);
+  MU_RUN_TEST(default_scene);
 }
 
 int main(int argc, char *argv[]) {
