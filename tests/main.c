@@ -14,12 +14,22 @@
 
 #define SCREENSHOT_FOLDER "tests"
 
-void appendExtention(char* target,const char* filename){
-  sprintf(target, "%s.ppm", filename);
+void appendExtention(char* target,const char* fileName){
+  sprintf(target, "%s.ppm", fileName);
 }
 
-void appendFolder(char* target, char* filename){
-  sprintf(target, "./%s/%s",SCREENSHOT_FOLDER, filename);
+void appendFolder(char* target, char* fileName){
+  sprintf(target, "./%s/%s",SCREENSHOT_FOLDER, fileName);
+}
+
+void screenshotFromTestname(char* target, const char* testName){
+  char tmp[256];
+  appendExtention(tmp, testName);
+  appendFolder(target,tmp);
+}
+
+void screenshotFromTestnameFailed(char* target, const char* testName){
+  // todo
 }
 
 bool fileExists(char* path){
@@ -97,11 +107,10 @@ void prepare_renderBuffer(Buffer* renderBuffer, PpmBuffer* target){
 }
 
 // todo: review cleanp this mess
-MU_TEST(test_check) {
-  
+MU_TEST(test_check) {  
   PpmBuffer generated = {0};
-  if(!prepare_ppmBuffer(&generated)){
-    printf("Test failed. Failed to prepare generated buffer.");
+  if(prepare_ppmBuffer(&generated)){    
+    mu_fail("Test failed. Failed to prepare generated buffer.");
     return;
   }
 
@@ -109,8 +118,8 @@ MU_TEST(test_check) {
   prepare_renderBuffer(&render_buffer, &generated);
   
   PpmBuffer loaded = {0};
-  if(!prepare_ppmBuffer(&loaded)){
-    printf("Test failed. Failed to prepared loaded buffer.");
+  if(prepare_ppmBuffer(&loaded)){
+    mu_fail("Test failed. Failed to prepared loaded buffer.");
     return;
   }  
   
@@ -136,30 +145,29 @@ MU_TEST(test_check) {
 
 
   // loading compare sample
-  char filenameWithExtension[256];
-  appendExtention(filenameWithExtension, __func__);
-  char filenameWithFolder[256];
-  appendFolder(filenameWithFolder,filenameWithExtension);
-    
-  if(!fileExists(filenameWithFolder)) {
-    bool reference_screenshot_missing = false;
-    printf("Missing reference screnshot, wrigin generated:%s\n", filenameWithFolder);
-    ppmbuffer_save(filenameWithFolder, &generated);  
-    mu_check(reference_screenshot_missing);
+  char screenshotPath[256];
+  screenshotFromTestname(screenshotPath, __func__);
+
+  if(!fileExists(screenshotPath)) {
+    char tmp[512];
+    sprintf(tmp,"Missing reference screnshot, wrigin generated:%s\n", screenshotPath);
+    ppmbuffer_save(screenshotPath, &generated);
+    mu_fail(tmp);
     return;
   }
 
-  if(!ppmbuffer_load_into(filenameWithFolder, &loaded)){
-    bool reference_screenshot_failed_to_load = false;
-    printf("Reference screnshot, failed to load\n");
-    mu_check(reference_screenshot_failed_to_load);
+  if(!ppmbuffer_load_into(screenshotPath, &loaded)){
+    char tmp[512];
+    sprintf(tmp,"Reference screnshot, failed to load\n");
+    mu_fail(tmp);
     return;
   }
 
   bool image_are_same = ppmbuffer_same(&loaded, &generated);
-  if( !image_are_same){
+  if(!image_are_same){
     SaveSideBySide(&loaded, &generated, __func__);
   }
+  
   mu_check(image_are_same);
 
   free(generated.buffer);

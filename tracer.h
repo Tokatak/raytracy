@@ -13,7 +13,9 @@ typedef struct
 
 } PpmBuffer;
 
+//todo: depricate
 void save(unsigned char* buffer, int widthPixel, int heightPixel, char* fileName);
+// theese are ok
 void ppmbuffer_save(char* fileName, PpmBuffer* buffer);
 bool ppmbuffer_load(char *path, PpmBuffer* result);
 bool ppmbuffer_load_into(char *path, PpmBuffer* result);
@@ -23,6 +25,12 @@ bool ppmbuffer_compare_combine(PpmBuffer* abuffer, PpmBuffer* bbuffer, PpmBuffer
 void save(unsigned char* buffer, int widthPixel, int heightPixel, char* fileName){
   FILE *fptr;
   fptr = fopen(fileName, "w");
+
+  // note: assuming path is ensured
+  if( fptr == NULL ) {
+    printf("Failed to fopen at:%s\n",fileName);
+    return;
+  }
   
   fprintf(fptr, "P3\n");
   fprintf(fptr, "%d %d\n", widthPixel, heightPixel);
