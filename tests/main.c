@@ -2,6 +2,7 @@
 #include "tracer.h"
 #include "minunit.h"
 #include <stdbool.h>
+#include <string.h>
 
 // windows.h stuff
 #ifdef LoadImage
@@ -13,23 +14,13 @@
 #endif
 
 #define SCREENSHOT_FOLDER "tests"
-
-void appendExtention(char* target,const char* fileName){
-  sprintf(target, "%s.ppm", fileName);
-}
-
-void appendFolder(char* target, char* fileName){
-  sprintf(target, "./%s/%s",SCREENSHOT_FOLDER, fileName);
-}
-
-void screenshotFromTestname(char* target, const char* testName){
-  char tmp[256];
-  appendExtention(tmp, testName);
-  appendFolder(target,tmp);
-}
-
-void screenshotFromTestnameFailed(char* target, const char* testName){
+// todo: better defined path?
+void pathToFailedScreenshotFromName(char* target, const char* testName){
   sprintf(target, "./tests/failed/%s.ppm", testName);
+}
+
+void pathToScreenshotFromName(char* target, const char* testName){
+    sprintf(target, "./tests/%s.ppm", testName);
 }
 
 bool fileExists(char* path){
@@ -83,8 +74,7 @@ typedef struct{
   Buffer render_buffer;
   Sphere spheres[DEFAULT_SPHERE_COUNT];
   Light lights[DEFAULT_LIGHT_COUNT];
-  char screenshot_path[256];
-  char failed_screenshot_path[256]; // todo: remove, dont' like it
+  char test_name[256];
 } RenderTestContext;
 
 const V3 DEFAULT_VIEWPORT = { 640, 480, 0};
@@ -131,8 +121,8 @@ RenderTestContext* create_context(const char* test_name){
   memcpy(ctx->spheres, DEFAULT_SPHERES, sizeof(DEFAULT_SPHERES));
   memcpy(ctx->lights, DEFAULT_LIGHTS, sizeof(DEFAULT_LIGHTS));
 
-  screenshotFromTestname(ctx->screenshot_path, test_name);
-  screenshotFromTestnameFailed(ctx->failed_screenshot_path, test_name);
+  // note: assume test_name < 256;
+  strcpy(ctx->test_name, test_name);
 
   return ctx;
 }
@@ -154,22 +144,26 @@ void render_test_scene(RenderTestContext* ctx){
 
 // consider: exposing more verbosed fail reason
 bool validate_test_result(RenderTestContext* ctx){
-  if(!fileExists(ctx->screenshot_path)) {
-    printf("Missing reference screnshot, wrigin generated:%s\n", ctx->screenshot_path);
-    ppmbuffer_save(ctx->screenshot_path, &(ctx->generated));
+  char path[256];
+  pathToScreenshotFromName(path, ctx->test_name);
+  
+  if(!fileExists(path)) {
+    printf("Missing reference screnshot, wrigin generated:%s\n", path);
+    ppmbuffer_save(path, &(ctx->generated));
     return false;
   }
 
-  if(!ppmbuffer_load_into(ctx->screenshot_path, &(ctx->loaded))){
+  if(!ppmbuffer_load_into(path, &(ctx->loaded))){
     printf("Reference screnshot, failed to load\n");
     return false;
   }
 
   bool image_are_same = ppmbuffer_same(&(ctx->loaded), &(ctx->generated));
   if(!image_are_same){
+    pathToFailedScreenshotFromName(path, ctx->test_name);
     CompareCombineSave(&(ctx->loaded),
 		   &(ctx->generated),
-		   ctx->failed_screenshot_path);
+    		   path);
   }
 
   return image_are_same;    
