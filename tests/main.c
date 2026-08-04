@@ -34,15 +34,10 @@ bool fileExists(char* path){
 }
   
 
-// todo: const friendly
-void CompareCombineSave(PpmBuffer* stored, PpmBuffer* generated, const char* path){
-  char tmp[256];
-  sprintf(tmp, "%s", path);
-  
-  PpmBuffer diff;
+void CompareCombineSave(PpmBuffer* stored, PpmBuffer* generated, const char* path){  PpmBuffer diff;
   ppmbuffer_compare_combine(stored, generated, &diff);
   
-  ppmbuffer_save(tmp, &diff);
+  ppmbuffer_save(path, &diff);
   free(diff.buffer);
 }
 
