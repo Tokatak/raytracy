@@ -14,13 +14,13 @@
 #endif
 
 #define SCREENSHOT_FOLDER "tests"
-// todo: better defined path?
+#define FAILED_SCREENSHOT_FOLDER "failed"
 void pathToFailedScreenshotFromName(char* target, const char* testName){
-  sprintf(target, "./tests/failed/%s.ppm", testName);
+  sprintf(target, "./%s/%s/%s.ppm", SCREENSHOT_FOLDER, FAILED_SCREENSHOT_FOLDER, testName);
 }
 
 void pathToScreenshotFromName(char* target, const char* testName){
-    sprintf(target, "./tests/%s.ppm", testName);
+  sprintf(target, "./%s/%s.ppm", SCREENSHOT_FOLDER, testName);
 }
 
 bool fileExists(char* path){
@@ -33,7 +33,6 @@ bool fileExists(char* path){
   }
 }
   
-
 void CompareCombineSave(PpmBuffer* stored, PpmBuffer* generated, const char* path){  PpmBuffer diff;
   ppmbuffer_compare_combine(stored, generated, &diff);
   
@@ -41,11 +40,6 @@ void CompareCombineSave(PpmBuffer* stored, PpmBuffer* generated, const char* pat
   free(diff.buffer);
 }
 
-
-
-// NOTE!! MACRO AND ARRAY possible mismatch!
-#define DEFAULT_SPHERE_COUNT 4
-//static const int DEFAULT_SPHERE_COUNT = sizeof(DEFAULT_SPHERES) / sizeof(DEFAULT_SPHERES[0]);
 const Sphere DEFAULT_SPHERES[] = {
   // position
   {{0, -1, 3}, 1, {255, 0, 0}, 500, 0.2},
@@ -54,9 +48,6 @@ const Sphere DEFAULT_SPHERES[] = {
   {{0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.5},
 };
 
-// NOTE!! possible mismatch
-#define DEFAULT_LIGHT_COUNT 3
-//static const int DEFAULT_LIGHT_COUNT = sizeof(DEFAULT_LIGHTS) / sizeof(DEFAULT_LIGHTS[0]);
 const Light DEFAULT_LIGHTS[] = {
   {LIGHT_AMBIENT, 0.2, {0, 0, 0}},
   {LIGHT_POINT, 0.6, {2, 1, 0}},
@@ -67,8 +58,10 @@ typedef struct{
   PpmBuffer generated;
   PpmBuffer loaded;
   Buffer render_buffer;
-  Sphere spheres[DEFAULT_SPHERE_COUNT];
-  Light lights[DEFAULT_LIGHT_COUNT];
+  Sphere spheres[4];
+  int sphere_count;
+  Light lights[3];
+  int light_count;
   char test_name[256];
 } RenderTestContext;
 
@@ -114,7 +107,10 @@ RenderTestContext* create_context(const char* test_name){
   prepare_renderBuffer(&(ctx->render_buffer),&(ctx->generated));
 
   memcpy(ctx->spheres, DEFAULT_SPHERES, sizeof(DEFAULT_SPHERES));
+  ctx->sphere_count = 4;
+  
   memcpy(ctx->lights, DEFAULT_LIGHTS, sizeof(DEFAULT_LIGHTS));
+  ctx->light_count = 3;
 
   // note: assume test_name < 256;
   strcpy(ctx->test_name, test_name);
@@ -132,8 +128,8 @@ void render_test_scene(RenderTestContext* ctx){
 	     ctx->render_buffer,
 	     1, INFINITY,
 	     DEFAULT_RECURSION_DEPTH,
-	     ctx->spheres, DEFAULT_SPHERE_COUNT,
-	     ctx->lights, DEFAULT_LIGHT_COUNT
+	     ctx->spheres, ctx->sphere_count,
+	     ctx->lights, ctx->light_count
 	     );
 }
 
@@ -180,9 +176,16 @@ MU_TEST(default_scene) {
     destroy_render_test(ctx);
 }
 
+#include "light.h"
+
 MU_TEST_SUITE(test_suite) {
   MU_RUN_TEST(default_scene);
+  
+  MU_RUN_TEST(light_ambient);
+  MU_RUN_TEST(light_point);
+  MU_RUN_TEST(light_directional);  
 }
+
 
 int main(int argc, char *argv[]) {
   MU_RUN_SUITE(test_suite);
