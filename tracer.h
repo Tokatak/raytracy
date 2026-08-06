@@ -14,16 +14,18 @@ typedef struct
 
 } PpmBuffer;
 
-//todo: depricate
-void save(unsigned char* buffer, int widthPixel, int heightPixel,const char* fileName);
-// gthees
 void ppmbuffer_save(const char* fileName, PpmBuffer* buffer);
 bool ppmbuffer_load(char *path, PpmBuffer* result);
 bool ppmbuffer_load_into(char *path, PpmBuffer* result);
 bool ppmbuffer_same(PpmBuffer* abuffer, PpmBuffer* bbuffer);
 bool ppmbuffer_compare_combine(PpmBuffer* abuffer, PpmBuffer* bbuffer, PpmBuffer* result);
 
-void save(unsigned char* buffer, int widthPixel, int heightPixel,const char* fileName){
+
+void ppmbuffer_save(const char* fileName, PpmBuffer* ppm_buffer){
+  unsigned char* buffer = ppm_buffer->buffer;
+  int widthPixel = ppm_buffer->pxWidth;
+  int heightPixel =  ppm_buffer->pxHeight;
+  
   FILE *fptr;
   fptr = fopen(fileName, "w");
 
@@ -43,10 +45,6 @@ void save(unsigned char* buffer, int widthPixel, int heightPixel,const char* fil
       fprintf(fptr, "%d %d %d ", buffer[pixel +0], buffer[pixel+1], buffer[pixel+2]);
     }
   }
-}
-
-void ppmbuffer_save(const char* fileName, PpmBuffer* buffer){
-  save( buffer->buffer, buffer->pxWidth, buffer->pxHeight, fileName );
 }
 
 bool ppmbuffer_load(char *path, PpmBuffer* result){
