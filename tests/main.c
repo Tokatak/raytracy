@@ -126,6 +126,7 @@ void render_test_scene(RenderTestContext* ctx){
 	     DEFAULT_VIEWPORTSIZE,
 	     DEFAULT_PROJECTIONPLANE,
 	     ctx->render_buffer,
+	     PIXEL_LAYOUT_RGB,
 	     1, INFINITY,
 	     DEFAULT_RECURSION_DEPTH,
 	     ctx->spheres, ctx->sphere_count,

@@ -346,7 +346,7 @@ typedef struct{
   V3 color;
   float specular;
   float reflective;
-  float _rr; // r*r pre-storing
+  float _rr; // r*r pre-storing //todo: validate
 } Sphere;
 
 typedef struct{
@@ -355,6 +355,11 @@ typedef struct{
   const Sphere* sphere;
 } RaySphereIntersection;
 
+V3 ReflectRay(V3 N, V3 R);
+RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* restrict sphere);
+RaySphereIntersection intersectRaySphereClosest(const V3 O, const V3 D, const float t_min,
+						const float t_max,const  Sphere* restrict spheres,
+						const int sphereCount);
 
 V3 ReflectRay(V3 N, V3 R){
   V3 result = {0};
@@ -455,7 +460,6 @@ typedef struct{
   unsigned char* start;
 } Buffer;
 
-
 // centered zero
 // todo:  needs a better name
 typedef struct{
@@ -464,6 +468,37 @@ typedef struct{
   int left;
   int right;
 } Region;
+
+typedef struct {
+    int components;
+    int alpha_offset;  // -1 if no alpha
+    int r_offset;
+    int g_offset;
+    int b_offset;
+} PixelLayout;
+
+static const PixelLayout PIXEL_LAYOUT_RGB = {3, -1, 0, 1, 2};
+static const PixelLayout PIXEL_LAYOUT_BGR = {3, -1, 2, 1, 0};
+static const PixelLayout PIXEL_LAYOUT_RGBA = {4, 3, 0, 1, 2};
+static const PixelLayout PIXEL_LAYOUT_BGRA = {4, 3, 2, 1, 0};
+
+
+float ComputeLighting(V3 P, V3 N, V3 View, float s,
+		      const Sphere* spheres, int sphereCount,
+		      Light* lights, int lightCount);
+
+V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
+	     const Sphere* spheres, int sphereCount,
+	     Light* lights, int lightCount);
+
+void setPixelTexture(float x, float y, V3 color, Buffer *buffer);
+void setPixelCanvas(float x, float y, V3 color, Buffer *buffer);
+void fillRegion
+( V3 origin, V3 cameraDirection, Region region, V3 viewportSize,float projectionPlane,
+  Buffer buffer,PixelLayout layout,
+  float t_min, float t_max, int recursion_depth,
+  Sphere* spheres, int sphereCount,
+  Light* lights, int lightCount);
 
 float ComputeLighting(V3 P, V3 N, V3 View, float s,
 		      const Sphere* spheres, int sphereCount,
@@ -601,10 +636,10 @@ void setPixelCanvas(float x, float y, V3 color, Buffer *buffer) {
 
 void fillRegion
 ( V3 origin, V3 cameraDirection, Region region, V3 viewportSize,float projectionPlane,
-		 Buffer buffer,
-		 float t_min, float t_max, int recursion_depth,
-		 Sphere* spheres, int sphereCount,
-		 Light* lights, int lightCount){
+  Buffer buffer,PixelLayout layout,		 
+  float t_min, float t_max, int recursion_depth,
+  Sphere* spheres, int sphereCount,
+  Light* lights, int lightCount){
   int topEdge = region.top;
   int bottomEdge = region.bot;
 
@@ -618,7 +653,6 @@ void fillRegion
   int height = buffer.height;
 
   unsigned char* bufferStart = buffer.start;
-
   
   // Create a right vector (perpendicular to camera direction)
   // Assuming Y is up
@@ -648,12 +682,8 @@ void fillRegion
     float r = spheres[i].radius;
     spheres[i]._rr = r*r;
   }
-  
-  // NOTE:
-  // tracer relies or rba pixel format 3 components
-  // win expects 4 components
-  // will change for other platforms  ?!
-  int targetBufferColorComponents = 3;
+
+  int targetBufferColorComponents = layout.components;
   
   for (int y = topEdge; y > bottomEdge; y--) {
     for (int x = leftEdge; x < righEdge; x++) {
@@ -695,161 +725,24 @@ void fillRegion
 		       spheres,  sphereCount,
 		       lights, lightCount);
 
-      /* setPixelCanvas */
-      // in x - in Canvas space - w/2 to w/2
-      // out x - texture coords  0 to w
-      // in y - in Canvas space  [h/2 (top) , -h/2(bot)]
-      // by - HEIGHT/2   [ 0 , -h]
-      // and *-1 [0, h] according to texture space
-
-
       // todo: clenup this
       int columnOffsetPx = x + width / 2;
       int rowOffsetPx =  -(y - height / 2);
       
-      /* /\* setPixelTexture *\/ */
       int byteOffset = (width * rowOffsetPx + columnOffsetPx) * targetBufferColorComponents;
-      /* // potential branchless operation */
-      /* // clamp [0, 255] */
-      bufferStart[byteOffset + 0] =
+      bufferStart[byteOffset + layout.r_offset] =
 	(unsigned char)fmaxf(0.0, fminf(color.x, 255.0));
-      bufferStart[byteOffset + 1] =
+      bufferStart[byteOffset + layout.g_offset] =
 	(unsigned char)fmaxf(0.0, fminf(color.y, 255.0));
-      bufferStart[byteOffset + 2] =
+      bufferStart[byteOffset + layout.b_offset] =
 	(unsigned char)fmaxf(0.0, fminf(color.z, 255.0));
-      
+
+      if ( targetBufferColorComponents >3 ) {
+	bufferStart[byteOffset + layout.alpha_offset] =
+	  (unsigned char)255.0;
+      }      
     }
   }
 }
-
-// todo: unite or better pack
-// win method for specific target buffer packing
-// 4 components, different ordering
-// 
-void fillRegionWin( V3 origin, V3 cameraDirection, Region region, V3 viewportSize,float projectionPlane,
-		 Buffer buffer,
-		 float t_min, float t_max, int recursion_depth,
-		 Sphere* spheres, int sphereCount,
-		 Light* lights, int lightCount){
-
-  int topEdge = region.top;
-  int bottomEdge = region.bot;
-
-  int leftEdge = region.left;
-  int righEdge = region.right;
-
-  V3 direction = {0};
-  V3 color;
-
-  int width = buffer.width;
-  int height = buffer.height;
-
-  unsigned char* bufferStart = buffer.start;
-
-
-  // Create a right vector (perpendicular to camera direction)
-  // Assuming Y is up
-  V3 up = {0, 1, 0};
-  V3 right;
-
-  // TODO: re-review
-  // cross
-  right.x = up.y * cameraDirection.z - up.z * cameraDirection.y;
-  right.y = up.z * cameraDirection.x - up.x * cameraDirection.z;
-  right.z = up.x * cameraDirection.y - up.y * cameraDirection.x;
-  
-  float rightLen = sqrtf(right.x*right.x + right.y*right.y + right.z*right.z);
-  if (rightLen > 0) {
-    right.x /= rightLen;
-    right.y /= rightLen;
-    right.z /= rightLen;
-  }
-  
-  V3 actualUp;
-  actualUp.x = cameraDirection.y * right.z - cameraDirection.z * right.y;
-  actualUp.y = cameraDirection.z * right.x - cameraDirection.x * right.z;
-  actualUp.z = cameraDirection.x * right.y - cameraDirection.y * right.x;
-  
-  for( int i=0; i< sphereCount; i++){
-    float r = spheres[i].radius;
-    spheres[i]._rr = r*r;
-  }
-  
-  // NOTE:
-  // tracer relies or rba pixel format 3 components
-  // win expects 4 components
-  // win BGRA
-  int targetBufferColorComponents = 4;
-  
-  for (int y = topEdge; y > bottomEdge; y--) {
-    for (int x = leftEdge; x < righEdge; x++) {
-
-      // x and y
-      //      height /2
-      //-width/2      width/2
-      //     -height /2
-
-      // vieport size currently 1, 1
-      // width and height are buffer size
-
-      // that makes direction
-      //      0.5
-      //-0.5      0.5
-      //     -0.5
-
-      // todo: review
-      // These are offsets from the center of the viewport
-      float viewportX = x * viewportSize.x / width;
-      float viewportY = y * viewportSize.y / height;
-      
-      // Transform viewport coordinates into world space using camera orientation
-      direction.x = cameraDirection.x * projectionPlane + right.x * viewportX + actualUp.x * viewportY;
-      direction.y = cameraDirection.y * projectionPlane + right.y * viewportX + actualUp.y * viewportY;
-      direction.z = cameraDirection.z * projectionPlane + right.z * viewportX + actualUp.z * viewportY;
-      
-      // Normalize direction
-      float dirLen = sqrtf(direction.x*direction.x + direction.y*direction.y + direction.z*direction.z);
-      if (dirLen > 0) {
-        direction.x /= dirLen;
-        direction.y /= dirLen;
-        direction.z /= dirLen;
-      }
-      
-      
-      color = traceRay(origin, direction, t_min, t_max, recursion_depth,
-		       spheres,  sphereCount,
-		       lights, lightCount);
-
-      /* setPixelCanvas */
-      // in x - in Canvas space - w/2 to w/2
-      // out x - texture coords  0 to w
-      // in y - in Canvas space  [h/2 (top) , -h/2(bot)]
-      // by - HEIGHT/2   [ 0 , -h]
-      // and *-1 [0, h] according to texture space
-
-      // todo: clenup this
-      int columnOffsetPx = x + width / 2;
-      int rowOffsetPx =  -(y - height / 2);
-      
-      /* /\* setPixelTexture *\/ */
-      int byteOffset = (width * rowOffsetPx + columnOffsetPx) * targetBufferColorComponents;
-      /* // potential branchless operation */
-      /* // clamp [0, 255] */
-      bufferStart[byteOffset + 0] =  // BLUE
-	(unsigned char)fmaxf(0.0, fminf(color.z, 255.0));
-      bufferStart[byteOffset + 1] = // GREEN
-	(unsigned char)fmaxf(0.0, fminf(color.y, 255.0));
-      bufferStart[byteOffset + 2] = // RED
-	(unsigned char)fmaxf(0.0, fminf(color.x, 255.0));
-      bufferStart[byteOffset + 3] =
-      (unsigned char)255.0;
-      
-    }
-  }
-}
-
-
-
-
 
 #endif

@@ -59,7 +59,8 @@ int main(int argc, char **argv) {
 
   V3 cameraDirection = { 0,0,1};
 
-  fillRegion( origin, cameraDirection ,region, viewportSize, projectionPlane, buffer,
+  fillRegion( origin, cameraDirection ,region, viewportSize, projectionPlane,
+	      buffer, PIXEL_LAYOUT_RGB,
 	      1, INFINITY, recursion_depth,
 	      spheres, ARRAY_SIZE(spheres), lights, ARRAY_SIZE(lights));
 	        
