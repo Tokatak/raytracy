@@ -675,8 +675,7 @@ void fillRegion
   V3 actualUp;
   actualUp.x = cameraDirection.y * right.z - cameraDirection.z * right.y;
   actualUp.y = cameraDirection.z * right.x - cameraDirection.x * right.z;
-  actualUp.z = cameraDirection.x * right.y - cameraDirection.y * right.x;
-  
+  actualUp.z = cameraDirection.x * right.y - cameraDirection.y * right.x;  
 
   for( int i=0; i< sphereCount; i++){
     float r = spheres[i].radius;
@@ -725,7 +724,6 @@ void fillRegion
 		       spheres,  sphereCount,
 		       lights, lightCount);
 
-      // todo: clenup this
       int columnOffsetPx = x + width / 2;
       int rowOffsetPx =  -(y - height / 2);
       
