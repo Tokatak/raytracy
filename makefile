@@ -1,9 +1,9 @@
 build:
 # debug
-	gcc -Wall -Wextra -Wpedantic -g -O0 -o main main.c &&  ./main.exe
+	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 -o main main.c &&  ./main.exe
 
 # optimized
-#	 gcc -Wall -Wextra -Wpedantic -O3 -march=native -o main main.c && main.exe
+#	 gcc -ffast-math  -Wall -Wextra -Wpedantic -O3 -march=native -o main main.c && main.exe
 
 msvc:
 	cl /Zi /DEBUG /EHsc main.c && main.exe
@@ -13,7 +13,7 @@ msvc:
 tests-clean:
 	-rm -f test_suite
 tests-build:
-	gcc -Wall  -I./external/minunit	 -I./ ./tests/main.c -o test_suite
+	gcc -ffast-math -Wall  -I./external/minunit	 -I./ ./tests/main.c -o test_suite
 tests-build-cl:
 	cl /Zi /DEBUG /EHsc /I ./ /I ./external/* ./tests/main.c /Fe:cl_test_suite.exe
 tests-run:
@@ -24,7 +24,7 @@ test tests: tests-clean tests-build tests-run
 profile-clean:
 	rm -f gmon.out && rm -f  executable.exe && rm -f callgraph.txt
 profile-build:
-	gcc -g -pg -O2 -no-pie main.c -o executable.exe && ./executable.exe
+	gcc -ffast-math -g -pg -O2 -no-pie main.c -o executable.exe && ./executable.exe
 profile-run:
 	gprof -q executable.exe gmon.out > callgraph.txt
 profile: profile-clean profile-build profile-run

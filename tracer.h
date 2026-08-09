@@ -291,6 +291,8 @@ bool ppmbuffer_compare_combine(PpmBuffer* abuffer, PpmBuffer* bbuffer, PpmBuffer
 #ifndef V3_H
 #define V3_H
 
+// ffast-math ?
+#define _USE_MATH_DEFINES
 #include <math.h>
 
 typedef struct{
@@ -544,7 +546,7 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
       
       float rDotV = v3_dot( Reflection, View);
       if (rDotV >0){
-	intensity += l->intensity * pow( rDotV / (v3_len(Reflection) * v3_len(View)), s );
+	intensity += l->intensity * powf( rDotV / (v3_len(Reflection) * v3_len(View)), s );
       }
     }
     
@@ -684,6 +686,12 @@ void fillRegion
   }
 
   int targetBufferColorComponents = layout.components;
+  float normWidth = viewportSize.x / width;
+  float normHeight = viewportSize.y / height;
+  
+  float cameraDirectionXprojectionPlaneX = cameraDirection.x * projectionPlane;
+  float cameraDirectionXprojectionPlaneY = cameraDirection.y * projectionPlane;
+  float cameraDirectionXprojectionPlaneZ = cameraDirection.z * projectionPlane;
   
   for (int y = topEdge; y > bottomEdge; y--) {
     for (int x = leftEdge; x < righEdge; x++) {
@@ -705,20 +713,21 @@ void fillRegion
 
       // todo: review
       // These are offsets from the center of the viewport
-      float viewportX = x * viewportSize.x / width;
-      float viewportY = y * viewportSize.y / height;
+      float viewportX = x * normWidth;
+      float viewportY = y * normHeight;
       
       // Transform viewport coordinates into world space using camera orientation
-      direction.x = cameraDirection.x * projectionPlane + right.x * viewportX + actualUp.x * viewportY;
-      direction.y = cameraDirection.y * projectionPlane + right.y * viewportX + actualUp.y * viewportY;
-      direction.z = cameraDirection.z * projectionPlane + right.z * viewportX + actualUp.z * viewportY;
+      direction.x = cameraDirectionXprojectionPlaneX + right.x * viewportX + actualUp.x * viewportY;
+      direction.y = cameraDirectionXprojectionPlaneY + right.y * viewportX + actualUp.y * viewportY;
+      direction.z = cameraDirectionXprojectionPlaneZ + right.z * viewportX + actualUp.z * viewportY;
       
       // Normalize direction
       float dirLen = sqrtf(direction.x*direction.x + direction.y*direction.y + direction.z*direction.z);
+      float invDirLen = 1/dirLen;
       if (dirLen > 0) {
-        direction.x /= dirLen;
-        direction.y /= dirLen;
-        direction.z /= dirLen;
+        direction.x *= invDirLen;
+        direction.y *= invDirLen;
+        direction.z *= invDirLen;
       }
       
       color = traceRay(origin, direction, t_min, t_max, recursion_depth,
