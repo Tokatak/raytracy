@@ -28,5 +28,3 @@ profile-build:
 profile-run:
 	gprof -q executable.exe gmon.out > callgraph.txt
 profile: profile-clean profile-build profile-run
-
- 

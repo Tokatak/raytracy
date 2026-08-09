@@ -510,6 +510,9 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
   V3 L;
   V3 Reflection;
 
+  float N_len = v3_len(N);
+  float View_len = v3_len(View);
+
   for( int i =0; i< lightCount; i++){
     Light* l = lights+i;
 
@@ -532,21 +535,19 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
       continue;
     }
 
-    
     // DIFFUSE
     float nDotl = v3_dot( N, L);
     if ( nDotl > 0 ){
-      intensity += l->intensity * nDotl / (v3_len(N) * v3_len(L)) ;
+      intensity += l->intensity * nDotl / (N_len * v3_len(L)) ;
     }
 
     // SPECULAR
     if ( s != -1){
-
       Reflection = ReflectRay(N,L);
       
       float rDotV = v3_dot( Reflection, View);
       if (rDotV >0){
-	intensity += l->intensity * powf( rDotV / (v3_len(Reflection) * v3_len(View)), s );
+	intensity += l->intensity * powf( rDotV / (v3_len(Reflection) * View_len), s );
       }
     }
     
@@ -692,7 +693,10 @@ void fillRegion
   float cameraDirectionXprojectionPlaneX = cameraDirection.x * projectionPlane;
   float cameraDirectionXprojectionPlaneY = cameraDirection.y * projectionPlane;
   float cameraDirectionXprojectionPlaneZ = cameraDirection.z * projectionPlane;
-  
+
+  // todo: consider using pthreads
+  // for omp paste -fopenmp in gcc compile line
+  // #pragma omp parallel for
   for (int y = topEdge; y > bottomEdge; y--) {
     for (int x = leftEdge; x < righEdge; x++) {
       /* direction = canvasToViewport(x, y, buffer.width, buffer.height, */
@@ -716,7 +720,7 @@ void fillRegion
       float viewportX = x * normWidth;
       float viewportY = y * normHeight;
       
-      // Transform viewport coordinates into world space using camera orientation
+      // Transform viewport  into world space using camera orientation
       direction.x = cameraDirectionXprojectionPlaneX + right.x * viewportX + actualUp.x * viewportY;
       direction.y = cameraDirectionXprojectionPlaneY + right.y * viewportX + actualUp.y * viewportY;
       direction.z = cameraDirectionXprojectionPlaneZ + right.z * viewportX + actualUp.z * viewportY;
