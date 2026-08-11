@@ -60,8 +60,13 @@ int main(int argc, char **argv) {
   // profile
 
   V3 cameraDirection = { 0,0,1};
-
-  fillRegion( origin, cameraDirection ,region, viewportSize, projectionPlane,
+  Camera camera = {0};
+  camera.position = origin;
+  camera.direction = cameraDirection;
+  camera.viewportSize = viewportSize;
+  camera.projectionPlane = projectionPlane;
+  
+  fillRegion( region, camera,
 	      buffer, PIXEL_LAYOUT_RGB,
 	      1, INFINITY, recursion_depth,
 	      spheres, ARRAY_SIZE(spheres), lights, ARRAY_SIZE(lights));

@@ -65,15 +65,24 @@ typedef struct{
   char test_name[256];
 } RenderTestContext;
 
-const V3 DEFAULT_VIEWPORT = { 640, 480, 0};
+
+// Camera
 const V3 DEFAULT_ORIGIN = {0};
 const V3 DEFAULT_CAMERADIRECTION = {0,0,1};
+const V3 DEFAULT_VIEWPORT = { 640, 480, 0};
+const V3 DEFAULT_VIEWPORTSIZE = {1.0, 1.0, 1.0};
+const float DEFAULT_PROJECTIONPLANE = 1.0;
+
 // top, bot, left, right
 // for default viewport
 const Region DEFAULT_REGION = { 240, -240, -320, 320 };
-const V3 DEFAULT_VIEWPORTSIZE = {1.0, 1.0, 1.0};
-const float DEFAULT_PROJECTIONPLANE = 1.0;
 const int DEFAULT_RECURSION_DEPTH = 3;
+const Camera DEFAULT_CAMERA = {
+  DEFAULT_ORIGIN,
+  DEFAULT_CAMERADIRECTION,
+  DEFAULT_VIEWPORTSIZE,
+  DEFAULT_PROJECTIONPLANE
+};
 
 
 bool prepare_ppmBuffer(PpmBuffer* ppmBuffer){
@@ -120,11 +129,8 @@ RenderTestContext* create_context(const char* test_name){
 
 void render_test_scene(RenderTestContext* ctx){
   fillRegion(
-	     DEFAULT_ORIGIN,
-	     DEFAULT_CAMERADIRECTION,
 	     DEFAULT_REGION,
-	     DEFAULT_VIEWPORTSIZE,
-	     DEFAULT_PROJECTIONPLANE,
+	     DEFAULT_CAMERA,
 	     ctx->render_buffer,
 	     PIXEL_LAYOUT_RGB,
 	     1, INFINITY,

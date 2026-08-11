@@ -480,6 +480,13 @@ typedef struct {
     int b_offset;
 } PixelLayout;
 
+typedef struct {
+  V3 position;
+  V3 direction;
+  V3 viewportSize;
+  float projectionPlane;
+} Camera;
+
 static const PixelLayout PIXEL_LAYOUT_RGB = {3, -1, 0, 1, 2};
 static const PixelLayout PIXEL_LAYOUT_BGR = {3, -1, 2, 1, 0};
 static const PixelLayout PIXEL_LAYOUT_RGBA = {4, 3, 0, 1, 2};
@@ -497,7 +504,7 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 void setPixelTexture(float x, float y, V3 color, Buffer *buffer);
 void setPixelCanvas(float x, float y, V3 color, Buffer *buffer);
 void fillRegion
-( V3 origin, V3 cameraDirection, Region region, V3 viewportSize,float projectionPlane,
+( Region region, Camera camera,
   Buffer buffer,PixelLayout layout,
   float t_min, float t_max, int recursion_depth,
   Sphere* spheres, int sphereCount,
@@ -637,13 +644,18 @@ void setPixelCanvas(float x, float y, V3 color, Buffer *buffer) {
                   buffer);
 }
 
-
 void fillRegion
-( V3 origin, V3 cameraDirection, Region region, V3 viewportSize,float projectionPlane,
-  Buffer buffer,PixelLayout layout,		 
+( Region region, Camera camera,
+  Buffer buffer,PixelLayout layout,
   float t_min, float t_max, int recursion_depth,
   Sphere* spheres, int sphereCount,
-  Light* lights, int lightCount){
+  Light* lights, int lightCount)
+{
+  V3 origin = camera.position;
+  V3 cameraDirection = camera.direction;
+  V3 viewportSize = camera.viewportSize;
+  float projectionPlane = camera.projectionPlane;
+   
   int topEdge = region.top;
   int bottomEdge = region.bot;
 
