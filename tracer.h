@@ -218,16 +218,12 @@ bool ppmbuffer_compare_combine(PpmBuffer* abuffer, PpmBuffer* bbuffer, PpmBuffer
       return false;
     }
 
+  if (result->buffer == NULL) {
+    return false; // Memory was not provided
+  }
+
   int width = abuffer->pxWidth;
   int height = abuffer->pxHeight;
-
-  result->pxWidth = width * 3;
-  result->pxHeight = height;
-  result->buffer = (unsigned char*)malloc(result->pxWidth * result->pxHeight * 3); // 3 bytes per pixel (RGB)
-  
-  if (result->buffer == NULL) {
-    return false; // Memory allocation failed
-  }
 
   unsigned char* createdPixel;
   unsigned char* storedPixel;

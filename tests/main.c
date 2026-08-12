@@ -33,11 +33,25 @@ bool fileExists(char* path){
   }
 }
   
-void CompareCombineSave(PpmBuffer* stored, PpmBuffer* generated, const char* path){  PpmBuffer diff;
-  ppmbuffer_compare_combine(stored, generated, &diff);
+void CompareCombineSave(PpmBuffer* stored, PpmBuffer* generated, const char* path){
+  PpmBuffer result;
+  int width = stored->pxWidth;
+  int height = stored->pxHeight;
+
+  result.pxWidth = width * 3;
+  result.pxHeight = height;
+  // 3 bytes per pixel (RGB)
+  result.buffer = (unsigned char*)malloc(result.pxWidth * result.pxHeight * 3); 
   
-  ppmbuffer_save(path, &diff);
-  free(diff.buffer);
+  if (result.buffer == NULL) {
+    return;
+  }
+
+  
+  ppmbuffer_compare_combine(stored, generated, &result);
+  
+  ppmbuffer_save(path, &result);
+  free(result.buffer);
 }
 
 const Sphere DEFAULT_SPHERES[] = {
