@@ -11,7 +11,7 @@ msvc:
 
 # TESTS
 tests-clean:
-	-rm -f test_suite
+	-rm -f ./tests/failed/*
 tests-build:
 	gcc -ffast-math -Wall  -I./external/minunit	 -I./ ./tests/main.c -o test_suite
 tests-build-cl:
