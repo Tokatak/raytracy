@@ -574,10 +574,10 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
     return DEFAULT_COLOR;
   }
   
-  /* // no light */
-  /* if(closestSphere!=NULL){ */
-  /*   return closestSphere->color; */
-  /* } */
+  // no light
+  if(lightCount == 0){
+    return closestSphere->color;
+  }
   
   // Lit
   V3 P;
