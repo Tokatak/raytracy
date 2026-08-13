@@ -52,12 +52,14 @@ int main(int argc, char **argv) {
   V3 origin = {0};
   int recursion_depth = 3;
 
+  #ifndef PROFILE
   // profile
   LARGE_INTEGER frequency, start, end;
   double elapsed;
   QueryPerformanceFrequency(&frequency);
   QueryPerformanceCounter(&start);
   // profile
+  #endif 
 
   V3 cameraDirection = { 0,0,1};
   Camera camera = {0};
@@ -70,7 +72,8 @@ int main(int argc, char **argv) {
 	      buffer, PIXEL_LAYOUT_RGB,
 	      1, INFINITY, recursion_depth,
 	      spheres, ARRAY_SIZE(spheres), lights, ARRAY_SIZE(lights));
-	        
+
+#ifndef PROFILE
   // profile
   QueryPerformanceCounter(&end);
   elapsed = (double)(end.QuadPart - start.QuadPart) / frequency.QuadPart;
@@ -87,5 +90,7 @@ int main(int argc, char **argv) {
   ppmbuffer_save("out.ppm", &ppm_buffer);
 
   free(buffer.start);
+#endif
+  
   return 0;
 }

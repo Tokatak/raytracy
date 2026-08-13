@@ -24,7 +24,7 @@ test tests: tests-clean tests-build tests-run
 profile-clean:
 	rm -f gmon.out && rm -f  executable.exe && rm -f callgraph.txt
 profile-build:
-	gcc -ffast-math -g -pg -O2 -no-pie main.c -o executable.exe && ./executable.exe
+	gcc -DPROFILE -ffast-math -g -pg -O2 -no-pie main.c -o executable.exe && ./executable.exe
 profile-run:
 	gprof -q executable.exe gmon.out > callgraph.txt
 profile: profile-clean profile-build profile-run

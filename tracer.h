@@ -702,14 +702,14 @@ void fillRegion
   float cameraDirectionXprojectionPlaneY = cameraDirection.y * projectionPlane;
   float cameraDirectionXprojectionPlaneZ = cameraDirection.z * projectionPlane;
 
+  int halfWidth = width /2;
+  int halfHeight = height/2;
+
   // todo: consider using pthreads
   // for omp paste -fopenmp in gcc compile line
   // #pragma omp parallel for
   for (int y = topEdge; y > bottomEdge; y--) {
     for (int x = leftEdge; x < righEdge; x++) {
-      /* direction = canvasToViewport(x, y, buffer.width, buffer.height, */
-      /*                              viewportSize, projectionPlane); */
-
       // x and y
       //      height /2
       //-width/2      width/2
@@ -746,20 +746,16 @@ void fillRegion
 		       spheres,  sphereCount,
 		       lights, lightCount);
 
-      int columnOffsetPx = x + width / 2;
-      int rowOffsetPx =  -(y - height / 2);
+      int columnOffsetPx = x + halfWidth;
+      int rowOffsetPx =  -(y - halfHeight);
       
       int byteOffset = (width * rowOffsetPx + columnOffsetPx) * targetBufferColorComponents;
-      bufferStart[byteOffset + layout.r_offset] =
-	(unsigned char)fmaxf(0.0, fminf(color.x, 255.0));
-      bufferStart[byteOffset + layout.g_offset] =
-	(unsigned char)fmaxf(0.0, fminf(color.y, 255.0));
-      bufferStart[byteOffset + layout.b_offset] =
-	(unsigned char)fmaxf(0.0, fminf(color.z, 255.0));
+      bufferStart[byteOffset + layout.r_offset] = (unsigned char)fmaxf(0.0, fminf(color.x, 255.0));
+      bufferStart[byteOffset + layout.g_offset] = (unsigned char)fmaxf(0.0, fminf(color.y, 255.0));
+      bufferStart[byteOffset + layout.b_offset] = (unsigned char)fmaxf(0.0, fminf(color.z, 255.0));
 
       if ( targetBufferColorComponents >3 ) {
-	bufferStart[byteOffset + layout.alpha_offset] =
-	  (unsigned char)255.0;
+	bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0;
       }      
     }
   }
