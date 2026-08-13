@@ -371,38 +371,30 @@ V3 ReflectRay(V3 N, V3 R){
 
 
 RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* restrict sphere){
-  float rr = sphere->_rr;
   RaySphereIntersection result = {0};
-  V3 sphereCenter = sphere->position;
+  float rr = sphere->_rr;
+  const float cx = sphere->position.x;
+  const float cy = sphere->position.y;
+  const float cz = sphere->position.z;
+  const float ocx = O.x - cx;
+  const float ocy = O.y - cy;
+  const float ocz = O.z - cz;    
+  const float dx = D.x, dy = D.y, dz = D.z;
+  const float a = dx*dx + dy*dy + dz*dz;
+  const float b = 2.0f * (ocx*dx + ocy*dy + ocz*dz);
+  const float c = ocx*ocx + ocy*ocy + ocz*ocz - rr;
   
-  V3 CO = {O.x - sphereCenter.x, O.y - sphereCenter.y, O.z - sphereCenter.z };
-  float a = v3_dot(D, D);
-  float a2 = 2*a;
-  float b = 2*v3_dot(CO, D);
-  float c = v3_dot(CO, CO) - rr;
-
   float discriminant = b*b - 4*a*c;
-  float sqrtDiscriminant = sqrtf(discriminant);
   if( discriminant < 0 )
     {
       return result;
-    }
-
-  float sqrtDiscriminantDivA2 = sqrtDiscriminant /a2;
-  float minusBA2 = -b / a2;
-
-  if( discriminant == 0 ){
-    result.t1 = minusBA2 + sqrtDiscriminantDivA2;
-    result.t2 = result.t1;
-    return result;
-  }
-
-  if( discriminant > 0 ){
-    result.t1 = minusBA2 + sqrtDiscriminantDivA2;
-    result.t2 = minusBA2 - sqrtDiscriminantDivA2;
-    return result;
-  }
-
+    }  
+  const float sqrtDiscriminant = sqrtf(discriminant);
+  const float inv_2a = 1.0f / ( 2.0f * a);
+  const float center = -b * inv_2a;
+  const float offset = sqrtDiscriminant * inv_2a;
+  result.t1 = center + offset;
+  result.t2 = center - offset;
   return result;
 }
 
