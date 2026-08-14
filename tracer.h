@@ -15,14 +15,14 @@ typedef struct
 
 } PpmBuffer;
 
-void ppmbuffer_save(const char* fileName, PpmBuffer* buffer);
-bool ppmbuffer_load(char *path, PpmBuffer* result);
-bool ppmbuffer_load_into(char *path, PpmBuffer* result);
-bool ppmbuffer_same(PpmBuffer* abuffer, PpmBuffer* bbuffer);
-bool ppmbuffer_compare_combine(PpmBuffer* abuffer, PpmBuffer* bbuffer, PpmBuffer* result);
+void ppmbuffer_save(const char* restrict fileName,const PpmBuffer* restrict buffer);
+bool ppmbuffer_load(const char* restrict path,PpmBuffer* restrict result);
+bool ppmbuffer_load_into(char* restrict path, PpmBuffer* restrict result);
+bool ppmbuffer_same(PpmBuffer* restrict abuffer, PpmBuffer* restrict bbuffer);
+bool ppmbuffer_compare_combine(PpmBuffer* restrict abuffer, PpmBuffer* restrict bbuffer, PpmBuffer* restrict result);
 
 
-void ppmbuffer_save(const char* fileName, PpmBuffer* ppm_buffer){
+void ppmbuffer_save(const char* restrict fileName,const PpmBuffer* restrict ppm_buffer){
   unsigned char* buffer = ppm_buffer->buffer;
   int widthPixel = ppm_buffer->pxWidth;
   int heightPixel =  ppm_buffer->pxHeight;
@@ -48,8 +48,8 @@ void ppmbuffer_save(const char* fileName, PpmBuffer* ppm_buffer){
   }
 }
 
-bool ppmbuffer_load(char *path, PpmBuffer* result){
-    char* fullPath = path;
+bool ppmbuffer_load(const char* restrict path,PpmBuffer* restrict result){
+  const char* fullPath = path;
 
   // Open the file
   FILE* file = fopen(fullPath, "rb");
@@ -306,18 +306,18 @@ V3 v3_negate(V3 v){
 }
 
 static inline
-float v3_dot(V3 a, V3 b){
+float v3_dot(const V3 a,const V3 b){
   return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
 static inline
-float v3_len(V3 v){
+float v3_len(const V3 v){
   // TODO: check sqrtf
   return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
 }
 
 static inline
-V3 v3_sub(V3 a, V3 b){
+V3 v3_sub(const V3 a,const V3 b){
   return (V3){a.x-b.x, a.y - b.y, a.z-b.z};
 }
 
@@ -360,7 +360,7 @@ RaySphereIntersection intersectRaySphereClosest(const V3 O, const V3 D, const fl
 						const float t_max,const  Sphere* restrict spheres,
 						const int sphereCount);
 
-V3 ReflectRay(V3 N, V3 R){
+V3 ReflectRay(const V3 N,const V3 R){
   V3 result = {0};
   float nDotl = v3_dot(R,N);
   result.x = 2*N.x*nDotl-R.x;
