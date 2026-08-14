@@ -1,9 +1,9 @@
 build:
 # debug
-	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 -o main main.c &&  ./main.exe
+	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 -o main main.c && ./main.exe
 
-# optimized
-#	 gcc -ffast-math  -Wall -Wextra -Wpedantic -O3 -march=native -o main main.c && main.exe
+optimized:
+	 gcc -ffast-math  -Wall -Wextra -Wpedantic -O3 -march=native -o main main.c && ./main.exe
 
 msvc:
 	cl /Zi /DEBUG /EHsc main.c && main.exe

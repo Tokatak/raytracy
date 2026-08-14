@@ -354,21 +354,18 @@ typedef struct{
   const Sphere* sphere;
 } RaySphereIntersection;
 
-V3 ReflectRay(V3 N, V3 R);
+static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result);
 RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* restrict sphere);
 RaySphereIntersection intersectRaySphereClosest(const V3 O, const V3 D, const float t_min,
 						const float t_max,const  Sphere* restrict spheres,
 						const int sphereCount);
 
-V3 ReflectRay(const V3 N,const V3 R){
-  V3 result = {0};
-  float nDotl = v3_dot(R,N);
-  result.x = 2*N.x*nDotl-R.x;
-  result.y = 2*N.y*nDotl-R.y;
-  result.z = 2*N.z*nDotl-R.z;
-  return result;
+static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){
+  const float twoNDotl = 2*v3_dot(R,N);
+  result->x = twoNDotl*N.x-R.x;
+  result->y = twoNDotl*N.y-R.y;
+  result->z = twoNDotl*N.z-R.z;
 }
-
 
 RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* restrict sphere){
   RaySphereIntersection result = {0};
@@ -538,7 +535,7 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
 
     // SPECULAR
     if ( s != -1){
-      Reflection = ReflectRay(N,L);
+      ReflectRay(N,L,&Reflection);
       
       float rDotV = v3_dot( Reflection, View);
       if (rDotV >0){
@@ -598,7 +595,8 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
   }
 
   // -D
-  V3 R = ReflectRay(N,v);
+  V3 R = {0}; 
+  ReflectRay(N,v,&R);
   V3 reflected_color = traceRay(P, R, EPSILON, BIG_NUMBER, recursion_depth-1, spheres, sphereCount, lights, lightCount);
   V3 result;
   result.x = local_color.x*(1-reflective) + reflected_color.x*reflective;
