@@ -348,6 +348,17 @@ typedef struct{
   float _rr; // r*r pre-storing //todo: validate
 } Sphere;
 
+typedef struct {
+  float* x;
+  float* y;
+  float* z;
+  float* radius2;
+  float* r, *g, *b;
+  float* specular;
+  float* reflective;
+  int count;
+} SphereSoA;
+
 typedef struct{
   float t1;
   float t2;
@@ -630,6 +641,13 @@ void setPixelCanvas(float x, float y, V3 color, Buffer *buffer) {
                   buffer);
 }
 
+typedef struct{
+  float_t* x;
+  float_t* y;
+  float_t* z;
+  size_t count;
+} DirectionBuffer;
+
 void fillRegion
 ( Region region, Camera camera,
   Buffer buffer,PixelLayout layout,
@@ -648,7 +666,6 @@ void fillRegion
   int leftEdge = region.left;
   int righEdge = region.right;
 
-  V3 direction = {0};
   V3 color;
 
   int width = buffer.width;
@@ -692,63 +709,93 @@ void fillRegion
   float cameraDirectionXprojectionPlaneY = cameraDirection.y * projectionPlane;
   float cameraDirectionXprojectionPlaneZ = cameraDirection.z * projectionPlane;
 
-  int halfWidth = width /2;
-  int halfHeight = height/2;
+  /* int halfWidth = width /2; */
+  /* int halfHeight = height/2; */
+
+  // 640*480 307'200
+  int expectedPixelCount = ((abs(topEdge) + abs(bottomEdge)) * (abs(leftEdge)+abs(righEdge) ) ) ;
+
+  DirectionBuffer directions = {0};
+  directions.count = expectedPixelCount;
+  directions.x = malloc(sizeof(float_t)*expectedPixelCount);
+  directions.y = malloc(sizeof(float_t)*expectedPixelCount);
+  directions.z = malloc(sizeof(float_t)*expectedPixelCount);
+
+  // todo: consider faield allocation 
+  //todo: consider alligned alocations
+/* #ifdef __AVX2__ */
+/* #define SIMD_ALIGNMENT 32  // AVX2 needs 32-byte alignment */
+/* #elif __SSE__ */
+/* #define SIMD_ALIGNMENT 16  // SSE needs 16-byte alignment */
+/* #else */
+/* #define SIMD_ALIGNMENT 8   // Default */
+/* #endif */
+
+/*   // Allocate aligned memory for faster SIMD loads */
+/*   directions.x = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
+/* 					 sizeof(float_t) * pixelCount); */
+/*   directions.y = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
+/* 					 sizeof(float_t) * pixelCount); */
+/*   directions.z = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
+/* 					 sizeof(float_t) * pixelCount); */
+
+  
+  for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
+    const float viewportY = screeenY * normHeight;
+    const float baseX = cameraDirectionXprojectionPlaneX + actualUp.x * viewportY;
+    const float baseY = cameraDirectionXprojectionPlaneY + actualUp.y * viewportY;
+    const float baseZ = cameraDirectionXprojectionPlaneZ + actualUp.z * viewportY;
+    
+    for (int screenX = leftEdge; screenX < righEdge; screenX++) {
+      const float viewportX = screenX * normWidth;      
+      float x = baseX + right.x * viewportX;
+      float y = baseY + right.y * viewportX;
+      float z = baseZ + right.z * viewportX;
+
+      float dirLen = sqrtf(x*x + y*y + z*z);
+      float invDirLen = 1/dirLen;
+      if (dirLen > 0) {
+        x *= invDirLen;
+        y *= invDirLen;
+        z *= invDirLen;
+      }
+
+      directions.x[pixelIndex] = x;
+      directions.y[pixelIndex] = y;
+      directions.z[pixelIndex] = z;
+      pixelIndex++;
+    }
+  }
+
+  size_t pixelCount = directions.count; 
+  for ( size_t index = 0; index< pixelCount; index++){
+    
+    color = traceRay(origin,
+		     (V3){directions.x[index], directions.y[index], directions.z[index]},
+		     t_min, t_max, recursion_depth,
+		     spheres,  sphereCount,
+		     lights, lightCount);
+
+      
+    const int byteOffset = index * targetBufferColorComponents;
+    bufferStart[byteOffset + layout.r_offset] = (unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x)); 
+    bufferStart[byteOffset + layout.g_offset] = (unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y)); 
+    bufferStart[byteOffset + layout.b_offset] = (unsigned char)(color.z > 255.0f ? 255.0f : (color.z < 0.0f ? 0.0f : color.z));
+
+    if ( targetBufferColorComponents >3 ) {
+      bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0;
+    }
+  }
 
   // todo: consider using pthreads
   // for omp paste -fopenmp in gcc compile line
   // #pragma omp parallel for
-  for (int y = topEdge; y > bottomEdge; y--) {
-    for (int x = leftEdge; x < righEdge; x++) {
-      // x and y
-      //      height /2
-      //-width/2      width/2
-      //     -height /2
 
-      // vieport size currently 1, 1
-      // width and height are buffer size
-
-      // that makes direction
-      //      0.5
-      //-0.5      0.5
-      //     -0.5
-
-      // todo: review
-      // These are offsets from the center of the viewport
-      float viewportX = x * normWidth;
-      float viewportY = y * normHeight;
-      
-      // Transform viewport  into world space using camera orientation
-      direction.x = cameraDirectionXprojectionPlaneX + right.x * viewportX + actualUp.x * viewportY;
-      direction.y = cameraDirectionXprojectionPlaneY + right.y * viewportX + actualUp.y * viewportY;
-      direction.z = cameraDirectionXprojectionPlaneZ + right.z * viewportX + actualUp.z * viewportY;
-      
-      // Normalize direction
-      float dirLen = sqrtf(direction.x*direction.x + direction.y*direction.y + direction.z*direction.z);
-      float invDirLen = 1/dirLen;
-      if (dirLen > 0) {
-        direction.x *= invDirLen;
-        direction.y *= invDirLen;
-        direction.z *= invDirLen;
-      }
-      
-      color = traceRay(origin, direction, t_min, t_max, recursion_depth,
-		       spheres,  sphereCount,
-		       lights, lightCount);
-
-      int columnOffsetPx = x + halfWidth;
-      int rowOffsetPx =  -(y - halfHeight);
-      
-      int byteOffset = (width * rowOffsetPx + columnOffsetPx) * targetBufferColorComponents;
-      bufferStart[byteOffset + layout.r_offset] = (unsigned char)fmaxf(0.0, fminf(color.x, 255.0));
-      bufferStart[byteOffset + layout.g_offset] = (unsigned char)fmaxf(0.0, fminf(color.y, 255.0));
-      bufferStart[byteOffset + layout.b_offset] = (unsigned char)fmaxf(0.0, fminf(color.z, 255.0));
-
-      if ( targetBufferColorComponents >3 ) {
-	bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0;
-      }      
-    }
-  }
+  // todo:
+  //free directions
+  free(directions.x);
+  free(directions.y);
+  free(directions.z);
 }
 
 #endif

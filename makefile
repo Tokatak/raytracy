@@ -28,3 +28,9 @@ profile-build:
 profile-run:
 	gprof -q executable.exe gmon.out > callgraph.txt
 profile: profile-clean profile-build profile-run
+
+# vectorize
+vectorize-output:
+	 gcc -O3 -march=native -ftree-vectorize -fopt-info-vec-all -o main main.c
+vectorize-store:
+	 gcc -O3 -march=native -ftree-vectorize -fopt-info-vec-all -o main main.c -lm 2 > vectorize.txt
