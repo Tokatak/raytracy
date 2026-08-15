@@ -348,17 +348,6 @@ typedef struct{
   float _rr; // r*r pre-storing //todo: validate
 } Sphere;
 
-typedef struct {
-  float* x;
-  float* y;
-  float* z;
-  float* radius2;
-  float* r, *g, *b;
-  float* specular;
-  float* reflective;
-  int count;
-} SphereSoA;
-
 typedef struct{
   float t1;
   float t2;
@@ -648,6 +637,39 @@ typedef struct{
   size_t count;
 } DirectionBuffer;
 
+typedef struct{ 
+  float_t* x;
+  float_t* y;
+  float_t* z;
+  float_t* radius;
+  float_t* r;
+  float_t* g;
+  float_t* b;
+  float_t* specular;
+  float_t* reflective;
+  float_t* rr;
+
+  size_t count;  
+} SphereBuffer;
+
+typedef struct{
+  float_t* ambient_intensity;
+  size_t ambient_count;
+
+  float_t* point_x;
+  float_t* point_y;
+  float_t* point_z;
+  float_t* point_intensity;
+  size_t point_count;
+ 
+  float_t* dir_x;
+  float_t* dir_y;
+  float_t* dir_z;
+  float* dir_intensity;
+  size_t dir_count;
+  
+} LightBuffer;
+
 void fillRegion
 ( Region region, Camera camera,
   Buffer buffer,PixelLayout layout,
@@ -694,12 +716,101 @@ void fillRegion
   V3 actualUp;
   actualUp.x = cameraDirection.y * right.z - cameraDirection.z * right.y;
   actualUp.y = cameraDirection.z * right.x - cameraDirection.x * right.z;
-  actualUp.z = cameraDirection.x * right.y - cameraDirection.y * right.x;  
+  actualUp.z = cameraDirection.x * right.y - cameraDirection.y * right.x;
 
+  LightBuffer lightBuffer ={0};
+
+  size_t ambient = 0, point = 0, dir = 0;
+  for (int i = 0; i < lightCount; i++) {
+    switch (lights[i].type) {
+    case LIGHT_AMBIENT: ambient++; break;
+    case LIGHT_POINT: point++; break;
+    case LIGHT_DIRECTIONAL: dir++; break;
+    }
+  }
+
+  lightBuffer.ambient_count = ambient;
+  lightBuffer.ambient_intensity = malloc(ambient*sizeof(float));
+
+  lightBuffer.point_count = point;
+  lightBuffer.point_x = malloc(point*sizeof(float));
+  lightBuffer.point_y = malloc(point*sizeof(float));
+  lightBuffer.point_z = malloc(point*sizeof(float));
+  lightBuffer.point_intensity = malloc(point*sizeof(float));
+
+  lightBuffer.dir_count = dir;
+  lightBuffer.dir_x = malloc(dir*sizeof(float));
+  lightBuffer.dir_y = malloc(dir*sizeof(float));
+  lightBuffer.dir_z = malloc(dir*sizeof(float));
+  lightBuffer.dir_intensity = malloc(dir*sizeof(float)); 
+
+  size_t ambient_idx = 0, point_idx = 0, dir_idx = 0;
+  for (int i=0; i< lightCount; i++){
+    const Light l = lights[i];
+    
+    switch (l.type){
+    case LIGHT_AMBIENT: {
+      lightBuffer.ambient_intensity[ambient_idx] = l.intensity;
+      ambient_idx ++;
+      break;
+    }
+    case LIGHT_POINT: {
+      lightBuffer.point_intensity[point_idx] = l.intensity;
+      lightBuffer.point_x[point_idx] = l.position.x;
+      lightBuffer.point_y[point_idx] = l.position.y;
+      lightBuffer.point_z[point_idx] = l.position.z;
+      point_idx ++;
+      break;
+    }
+    case LIGHT_DIRECTIONAL: {      
+      lightBuffer.dir_x[dir_idx] = l.position.x;
+      lightBuffer.dir_y[dir_idx] = l.position.y;
+      lightBuffer.dir_z[dir_idx] = l.position.z;
+      lightBuffer.dir_intensity[dir_idx] = l.intensity;
+      dir_idx ++;
+      break;
+    }
+    default: break;
+    }
+  }
+
+  // todo: remove
   for( int i=0; i< sphereCount; i++){
     float r = spheres[i].radius;
     spheres[i]._rr = r*r;
   }
+  SphereBuffer sphereBuffer ={0};
+  sphereBuffer.x = malloc(sizeof(float_t)*sphereCount);
+  sphereBuffer.y = malloc(sizeof(float_t)*sphereCount);
+  sphereBuffer.z = malloc(sizeof(float_t)*sphereCount);
+  sphereBuffer.radius = malloc(sizeof(float_t)*sphereCount);
+  sphereBuffer.r = malloc(sizeof(float_t)*sphereCount);
+  sphereBuffer.g = malloc(sizeof(float_t)*sphereCount);
+  sphereBuffer.b = malloc(sizeof(float_t)*sphereCount);
+  sphereBuffer.specular = malloc(sizeof(float_t)*sphereCount);
+  sphereBuffer.reflective = malloc(sizeof(float_t)*sphereCount);
+  sphereBuffer.rr = malloc(sizeof(float_t)*sphereCount);
+  sphereBuffer.count = sphereCount;
+  for(int i =0; i< sphereCount; i++ ){
+    Sphere s = spheres[i];
+
+    sphereBuffer.x[i] = s.position.x;
+    sphereBuffer.y[i] = s.position.y;
+    sphereBuffer.z[i] = s.position.z;
+
+    sphereBuffer.radius[i] = s.radius;
+
+    const float r = s.radius;
+    sphereBuffer.rr[i] = r*r;
+    
+    sphereBuffer.r[i] = s.color.x;
+    sphereBuffer.g[i] = s.color.y;
+    sphereBuffer.b[i] = s.color.z;
+
+    sphereBuffer.specular[i] = s.specular;
+    sphereBuffer.reflective[i] = s.reflective;    
+  }
+
 
   int targetBufferColorComponents = layout.components;
   float normWidth = viewportSize.x / width;
@@ -715,11 +826,11 @@ void fillRegion
   // 640*480 307'200
   int expectedPixelCount = ((abs(topEdge) + abs(bottomEdge)) * (abs(leftEdge)+abs(righEdge) ) ) ;
 
-  DirectionBuffer directions = {0};
-  directions.count = expectedPixelCount;
-  directions.x = malloc(sizeof(float_t)*expectedPixelCount);
-  directions.y = malloc(sizeof(float_t)*expectedPixelCount);
-  directions.z = malloc(sizeof(float_t)*expectedPixelCount);
+  DirectionBuffer directionsBuffer = {0};
+  directionsBuffer.count = expectedPixelCount;
+  directionsBuffer.x = malloc(sizeof(float_t)*expectedPixelCount);
+  directionsBuffer.y = malloc(sizeof(float_t)*expectedPixelCount);
+  directionsBuffer.z = malloc(sizeof(float_t)*expectedPixelCount);
 
   // todo: consider faield allocation 
   //todo: consider alligned alocations
@@ -732,13 +843,14 @@ void fillRegion
 /* #endif */
 
 /*   // Allocate aligned memory for faster SIMD loads */
-/*   directions.x = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
+/*   directionsBuffer.x = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
 /* 					 sizeof(float_t) * pixelCount); */
-/*   directions.y = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
+/*   directionsBuffer.y = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
 /* 					 sizeof(float_t) * pixelCount); */
-/*   directions.z = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
+/*   directionsBuffer.z = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
 /* 					 sizeof(float_t) * pixelCount); */
 
+  //todo: consider padding
   
   for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
     const float viewportY = screeenY * normHeight;
@@ -760,18 +872,20 @@ void fillRegion
         z *= invDirLen;
       }
 
-      directions.x[pixelIndex] = x;
-      directions.y[pixelIndex] = y;
-      directions.z[pixelIndex] = z;
+      directionsBuffer.x[pixelIndex] = x;
+      directionsBuffer.y[pixelIndex] = y;
+      directionsBuffer.z[pixelIndex] = z;
       pixelIndex++;
     }
   }
 
-  size_t pixelCount = directions.count; 
+  size_t pixelCount = directionsBuffer.count; 
   for ( size_t index = 0; index< pixelCount; index++){
     
+    // TODO: conitnue here
+    // LightBuffer, SphereBuffer, directionsBuffer
     color = traceRay(origin,
-		     (V3){directions.x[index], directions.y[index], directions.z[index]},
+		     (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
 		     t_min, t_max, recursion_depth,
 		     spheres,  sphereCount,
 		     lights, lightCount);
@@ -792,10 +906,23 @@ void fillRegion
   // #pragma omp parallel for
 
   // todo:
-  //free directions
-  free(directions.x);
-  free(directions.y);
-  free(directions.z);
+  //free directionsBuffer
+  free(directionsBuffer.x);
+  free(directionsBuffer.y);
+  free(directionsBuffer.z);
+  
+  // todo: prettify
+  //free sphere buffer
+  free(sphereBuffer.x);
+  free(sphereBuffer.y);
+  free(sphereBuffer.z);
+  free(sphereBuffer.radius);
+  free(sphereBuffer.r);
+  free(sphereBuffer.g);
+  free(sphereBuffer.b);
+  free(sphereBuffer.specular);
+  free(sphereBuffer.reflective);
+  free(sphereBuffer.rr);
 }
 
 #endif
