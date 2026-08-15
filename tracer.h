@@ -923,6 +923,19 @@ void fillRegion
   free(sphereBuffer.specular);
   free(sphereBuffer.reflective);
   free(sphereBuffer.rr);
+
+  //light
+  free(lightBuffer.ambient_intensity);
+
+  free(lightBuffer.point_x);
+  free(lightBuffer.point_y);
+  free(lightBuffer.point_z);
+  free(lightBuffer.point_intensity);
+
+  free(lightBuffer.dir_x);
+  free(lightBuffer.dir_y);
+  free(lightBuffer.dir_z);
+  free(lightBuffer.dir_intensity);
 }
 
 #endif
