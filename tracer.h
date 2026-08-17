@@ -323,6 +323,64 @@ V3 v3_sub(const V3 a,const V3 b){
 
 #endif
 
+#ifndef COLOR_BUFFER_H
+#define COLOR_BUFFER_H
+typedef struct{
+  float_t* x;
+  float_t* y;
+  float_t* z;
+  size_t count;
+} ColorBuffer;
+#endif
+
+#ifndef SPHERE_BUFFER_H
+#define SPHERE_BUFFER_H
+typedef struct{ 
+  float_t* x;
+  float_t* y;
+  float_t* z;
+  float_t* radius;
+  float_t* r;
+  float_t* g;
+  float_t* b;
+  float_t* specular;
+  float_t* reflective;
+  float_t* rr;
+
+  size_t count;  
+} SphereBuffer;
+#endif
+
+#ifndef LIGHT_BUFFER_H
+#define LIGHT_BUFFER_H
+typedef struct{
+  float_t* ambient_intensity;
+  size_t ambient_count;
+
+  float_t* point_x;
+  float_t* point_y;
+  float_t* point_z;
+  float_t* point_intensity;
+  size_t point_count;
+ 
+  float_t* dir_x;
+  float_t* dir_y;
+  float_t* dir_z;
+  float* dir_intensity;
+  size_t dir_count;
+  
+} LightBuffer;
+#endif
+
+#ifndef DIRECTION_BUFFER_H
+#define DIRECTION_BUFFER_H
+typedef struct{
+  float_t* x;
+  float_t* y;
+  float_t* z;
+  size_t count;
+} DirectionBuffer;
+#endif
 
 #ifndef UTILITY_H
 #define UTILITY_H
@@ -486,6 +544,14 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 	     const Sphere* spheres, int sphereCount,
 	     Light* lights, int lightCount);
 
+void traceRayBatch(const V3 Origin,
+		   const DirectionBuffer directionBuffer,const size_t startAt,const size_t batchSize,
+		   const float t_min,const float t_max,const int recursion_depth,
+		   const SphereBuffer spheres,
+		   const LightBuffer lights,
+		   ColorBuffer* const result);
+
+
 void setPixelTexture(float x, float y, V3 color, Buffer *buffer);
 void setPixelCanvas(float x, float y, V3 color, Buffer *buffer);
 void fillRegion
@@ -606,6 +672,84 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
   return result;
 }
 
+
+void traceRayBatch(const V3 Origin,
+		   const DirectionBuffer directionBuffer,const size_t startAt,const size_t batchSize,
+		   const float t_min,const float t_max,const int recursion_depth,
+		   const SphereBuffer spheres,
+		   const LightBuffer lights,
+		   ColorBuffer* const result){
+
+  (void)Origin;
+  (void)directionBuffer;
+  (void)startAt;
+  (void)batchSize;
+  (void)t_min;
+  (void)t_max;
+  (void)recursion_depth;
+  (void)spheres;
+  (void)lights;
+  (void)result;
+  
+  
+
+  /* const float closest_t = BIG_NUMBER; */
+  /* const Sphere *closestSphere = NULL; */
+  
+  /* RaySphereIntersection intersection = intersectRaySphereClosest(O, D, t_min, t_max, spheres, sphereCount); */
+  /* closestSphere = intersection.sphere; */
+  /* closest_t = intersection.t1; */
+
+
+  /* if( closestSphere == NULL ){ */
+  /*   return DEFAULT_COLOR; */
+  /* } */
+  
+  /* // no light */
+  /* if(lightCount == 0){ */
+  /*   return closestSphere->color; */
+  /* } */
+  
+  /* // Lit */
+  /* V3 P; */
+  /* P.x = O.x + closest_t * D.x; */
+  /* P.y = O.y + closest_t * D.y; */
+  /* P.z = O.z + closest_t * D.z; */
+
+  /* V3 N; */
+  /* N.x = P.x - closestSphere->position.x; */
+  /* N.y = P.y - closestSphere->position.y; */
+  /* N.z = P.z - closestSphere->position.z;; */
+
+  /* V3 local_color = closestSphere->color; */
+
+  /* V3 v = v3_negate(D); */
+  /* // v from object to camera = -D from camera to object */
+  /* float light = ComputeLighting(P,N,v,closestSphere->specular, spheres, sphereCount, lights, lightCount); */
+
+  /* local_color.x *= light; */
+  /* local_color.y *= light; */
+  /* local_color.z *= light; */
+
+  /* float reflective = closestSphere->reflective; */
+  /* if ( recursion_depth <= 0 || reflective <=0 ){ */
+  /*   return local_color; */
+  /* } */
+
+  /* // -D */
+  /* V3 R = {0};  */
+  /* ReflectRay(N,v,&R); */
+  /* V3 reflected_color = traceRay(P, R, EPSILON, BIG_NUMBER, recursion_depth-1, spheres, sphereCount, lights, lightCount); */
+  /* V3 result; */
+  /* result.x = local_color.x*(1-reflective) + reflected_color.x*reflective; */
+  /* result.y = local_color.y*(1-reflective) + reflected_color.y*reflective; */
+  /* result.z = local_color.z*(1-reflective) + reflected_color.z*reflective; */
+  
+  /* return result; */
+
+  return;
+}
+
 void setPixelTexture(float x, float y, V3 color, Buffer *buffer) {
   int byteOffset = (x + buffer->width * y) * 3;
   // potential branchless operation
@@ -630,45 +774,8 @@ void setPixelCanvas(float x, float y, V3 color, Buffer *buffer) {
                   buffer);
 }
 
-typedef struct{
-  float_t* x;
-  float_t* y;
-  float_t* z;
-  size_t count;
-} DirectionBuffer;
 
-typedef struct{ 
-  float_t* x;
-  float_t* y;
-  float_t* z;
-  float_t* radius;
-  float_t* r;
-  float_t* g;
-  float_t* b;
-  float_t* specular;
-  float_t* reflective;
-  float_t* rr;
 
-  size_t count;  
-} SphereBuffer;
-
-typedef struct{
-  float_t* ambient_intensity;
-  size_t ambient_count;
-
-  float_t* point_x;
-  float_t* point_y;
-  float_t* point_z;
-  float_t* point_intensity;
-  size_t point_count;
- 
-  float_t* dir_x;
-  float_t* dir_y;
-  float_t* dir_z;
-  float* dir_intensity;
-  size_t dir_count;
-  
-} LightBuffer;
 
 void fillRegion
 ( Region region, Camera camera,
@@ -892,9 +999,12 @@ void fillRegion
 
       
     const int byteOffset = index * targetBufferColorComponents;
-    bufferStart[byteOffset + layout.r_offset] = (unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x)); 
-    bufferStart[byteOffset + layout.g_offset] = (unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y)); 
-    bufferStart[byteOffset + layout.b_offset] = (unsigned char)(color.z > 255.0f ? 255.0f : (color.z < 0.0f ? 0.0f : color.z));
+    bufferStart[byteOffset + layout.r_offset] =
+      (unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x)); 
+    bufferStart[byteOffset + layout.g_offset] =
+      (unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y)); 
+    bufferStart[byteOffset + layout.b_offset] =
+      (unsigned char)(color.z > 255.0f ? 255.0f : (color.z < 0.0f ? 0.0f : color.z));
 
     if ( targetBufferColorComponents >3 ) {
       bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0;
