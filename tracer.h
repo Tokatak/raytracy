@@ -418,6 +418,10 @@ RaySphereIntersection intersectRaySphereClosest(const V3 O, const V3 D, const fl
 						const float t_max,const  Sphere* restrict spheres,
 						const int sphereCount);
 
+RaySphereIntersection intersectRaySphereBatched(const V3 O,
+						const DirectionBuffer directionBuffer,
+						const SphereBuffer sphereBuffer);
+
 static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){
   const float twoNDotl = 2*v3_dot(R,N);
   result->x = twoNDotl*N.x-R.x;
@@ -450,6 +454,20 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
   const float offset = sqrtDiscriminant * inv_2a;
   result.t1 = center + offset;
   result.t2 = center - offset;
+  return result;
+}
+
+RaySphereIntersection intersectRaySphereBatched(const V3 O,
+						const DirectionBuffer directionBuffer,
+						const SphereBuffer sphereBuffer){
+  RaySphereIntersection result = {0};
+
+  (void)O;
+  (void)directionBuffer;
+  (void)sphereBuffer;
+
+  // todo: continue here, connect to scalar call
+  
   return result;
 }
 
@@ -690,9 +708,14 @@ void traceRayBatch(const V3 Origin,
   (void)spheres;
   (void)lights;
   (void)result;
-  
-  
 
+  // todo: continue when
+  // intersectRaySphereClosest
+  // intersectRaySphere 
+  // computelighting
+  // trace ray
+  /// are batched
+  
   /* const float closest_t = BIG_NUMBER; */
   /* const Sphere *closestSphere = NULL; */
   
