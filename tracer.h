@@ -16,7 +16,6 @@ typedef struct
 } PpmBuffer;
 
 void ppmbuffer_save(const char* restrict fileName,const PpmBuffer* restrict buffer);
-bool ppmbuffer_load(const char* restrict path,PpmBuffer* restrict result);
 bool ppmbuffer_load_into(char* restrict path, PpmBuffer* restrict result);
 bool ppmbuffer_same(PpmBuffer* restrict abuffer, PpmBuffer* restrict bbuffer);
 bool ppmbuffer_compare_combine(PpmBuffer* restrict abuffer, PpmBuffer* restrict bbuffer, PpmBuffer* restrict result);
@@ -46,69 +45,6 @@ void ppmbuffer_save(const char* restrict fileName,const PpmBuffer* restrict ppm_
       fprintf(fptr, "%d %d %d ", buffer[pixel +0], buffer[pixel+1], buffer[pixel+2]);
     }
   }
-}
-
-bool ppmbuffer_load(const char* restrict path,PpmBuffer* restrict result){
-  const char* fullPath = path;
-
-  // Open the file
-  FILE* file = fopen(fullPath, "rb");
-  if (!file) {
-    printf("Error: Could not open file %s\n", fullPath);
-    return false;
-  }
-  
-  // header
-  char format[3];
-  int maxColor;
-  
-  // (P3 or P6)
-  fscanf(file, "%2s", format);
-  if (format[0] != 'P' || (format[1] != '3' && format[1] != '6')) {
-    printf("Error: Not a valid PPM file\n");
-    fclose(file);
-    return false;
-  }
-  
-  // Skip comments
-  char c = fgetc(file);
-  while (c == '#') {
-    while (c != '\n') c = fgetc(file);
-    c = fgetc(file);
-  }
-  ungetc(c, file);
-  
-  // Read width and height
-  fscanf(file, "%d %d", &result->pxWidth, &result->pxHeight);
-  
-  // Read max color value
-  fscanf(file, "%d", &maxColor);
-  
-  // Allocate buffer for the image data
-  result->buffer = (unsigned char*)malloc(result->pxWidth * result->pxHeight * 3);
-  if (!result->buffer) {
-    printf("Error: Memory allocation failed\n");
-    fclose(file);
-    return false;
-  }
-  
-  // Read the pixel data
-  if (format[1] == '6') {
-    // P6 - Binary format
-    fread(result->buffer, 1, result->pxWidth * result->pxHeight * 3, file);
-  } else {
-    // P3 - ASCII format
-    int r, g, b;
-    for (int i = 0; i < result->pxWidth * result->pxHeight; i++) {
-      fscanf(file, "%d %d %d", &r, &g, &b);
-      result->buffer[i * 3 + 0] = (unsigned char)r;
-      result->buffer[i * 3 + 1] = (unsigned char)g;
-      result->buffer[i * 3 + 2] = (unsigned char)b;
-    }
-  }
-  
-  fclose(file);
-  return true;
 }
 
 bool ppmbuffer_load_into(char *path, PpmBuffer* result){
