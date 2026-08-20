@@ -754,7 +754,7 @@ void fillRegion
   int leftEdge = region.left;
   int righEdge = region.right;
 
-  V3 color;
+  V3 color = {0};
 
   int width = buffer.width;
   int height = buffer.height;
@@ -764,7 +764,7 @@ void fillRegion
   // Create a right vector (perpendicular to camera direction)
   // Assuming Y is up
   V3 up = {0, 1, 0};
-  V3 right;
+  V3 right = {0};
 
   // TODO: re-review
   // cross
@@ -779,7 +779,7 @@ void fillRegion
     right.z /= rightLen;
   }
   
-  V3 actualUp;
+  V3 actualUp = {0};
   actualUp.x = cameraDirection.y * right.z - cameraDirection.z * right.y;
   actualUp.y = cameraDirection.z * right.x - cameraDirection.x * right.z;
   actualUp.z = cameraDirection.x * right.y - cameraDirection.y * right.x;
