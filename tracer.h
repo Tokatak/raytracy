@@ -116,7 +116,7 @@ bool ppmbuffer_load_into(char *path, PpmBuffer* result){
   return true;
 }
 
-bool ppmbuffer_same(PpmBuffer* abuffer, PpmBuffer* bbuffer){
+bool ppmbuffer_same(const PpmBuffer* restrict abuffer,const PpmBuffer* restrict bbuffer){
     if (!abuffer || !bbuffer) {
         printf("Error: NULL pointer passed to SameImage\n");
         return false;
