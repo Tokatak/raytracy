@@ -17,7 +17,7 @@ typedef struct
 
 void ppmbuffer_save(const char* restrict fileName,const PpmBuffer* restrict buffer);
 bool ppmbuffer_load_into(char* restrict path, PpmBuffer* restrict result);
-bool ppmbuffer_same(PpmBuffer* restrict abuffer, PpmBuffer* restrict bbuffer);
+bool ppmbuffer_same(const PpmBuffer* restrict abuffer,const PpmBuffer* restrict bbuffer);
 bool ppmbuffer_compare_combine(PpmBuffer* restrict abuffer, PpmBuffer* restrict bbuffer, PpmBuffer* restrict result);
 
 
