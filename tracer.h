@@ -486,10 +486,12 @@ void intersectRaySphereBatched(const V3 O,
 
   // todo: handle several buffers
   tmp_x = _mm_set1_ps(sphereBuffer.rr[0]);
-    
-  __m128 c = _mm_add_ps(_mm_add_ps(tmp_x, tmp_y), tmp_z);
-  c = _mm_add_ps(_mm_add_ps(tmp_x, tmp_y), tmp_z);
+
+  //  const float c = ocx*ocx + ocy*ocy + ocz*ocz - rr;
+  __m128 c = _mm_add_ps(_mm_add_ps(ocx, ocy ), ocz);
+  // rr
   c = _mm_sub_ps(c, tmp_x);
+  
 
   ///////////
   // float discriminant = b*b - 4*a*c;
