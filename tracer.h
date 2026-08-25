@@ -381,19 +381,6 @@ static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){
   result->z = twoNDotl*N.z-R.z;
 }
 
-int logcount = 0;
-void d(const V3 O, const V3 D, bool hit, V3 sphereColor, RaySphereIntersection result, float disc, float rr, float c){
-  printf("scalar:%d\n\thit:%i\tO: %f %f %f\tD : %f %f %f\tcolor : %f %f %f\n %f\t%f\n disc:%f\t\n  rr:%f\t c:%f\t \n",
-	 logcount ++,
-	 hit,
-	 O.x, O.y, O.z,
-	 D.x, D.y, D.z,
-	 sphereColor.x, sphereColor.y, sphereColor.z,
-	 result.t1 , result.t2,
-	 disc,
-	 rr, c
-	 );
-}
 
 RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* restrict sphere){
   RaySphereIntersection result = {0};
@@ -415,11 +402,6 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
   float discriminant = b*b - 4*a*c;
   if( discriminant < 0 )
     {
-      // todo: scale it up
-      // next step 8
-      if(logcount < 4){
-	d(O,D,false,sphere->color, result, discriminant, rr, c);
-      }
       return result;
     }  
   const float sqrtDiscriminant = sqrtf(discriminant);
@@ -429,9 +411,6 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
   result.t1 = center + offset;
   result.t2 = center - offset;
 
-  if(logcount < 4){
-    d(O,D,false,sphere->color, result, discriminant, rr,c );
-  }
   return result;
 }
 
@@ -444,15 +423,9 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 						const SphereBuffer sphereBuffer,
 						float t_min, float t_max,
 						const Sphere* spheres){
-  //  RaySphereIntersection result = {0};
-
   // todo: expand for a generic case
   // for now, a limited behavior
-  // 4 spheres 1 direction, provided by callser
-
-
-  /* printf("called:%s\n", "tRaySphereBatched"); */
-  /* printf("dirs:%lli spheres:%lli\n", directionBuffer.count, sphereBuffer.count); */
+  // 4 spheres, directions buffer offsetted
 
   // RESULTS
   float r1_vals[4], r2_vals[4];
@@ -472,7 +445,6 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   ocy = _mm_sub_ps(ocy, tmp_y);
   ocz = _mm_sub_ps(ocz, tmp_z);
 
-  // todo: direction -> directions
   // dx, dy, dz
   tmp_x = _mm_set1_ps(directionBuffer.x[startAt]);
   tmp_y = _mm_set1_ps(directionBuffer.y[startAt]);
@@ -521,14 +493,11 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 				      _mm_mul_ps(a,c),
 				      _mm_set1_ps(4)
 				      )
-			   );
-
-  
-  
-
+			   ); 
+ 
   __m128 zero = _mm_setzero_ps();
   // todo:  consider using mask? 
-   __m128 hit_mask = _mm_cmpge_ps(disc, zero);  // 0xFFFFFFFF (-Nan) for hit, 0 for miss
+  __m128 hit_mask = _mm_cmpge_ps(disc, zero);  // 0xFFFFFFFF (-Nan) for hit, 0 for miss
    // hit_flags[i] == 0xFFFFFFFF =1 for hit
 
   disc = _mm_sqrt_ps(disc);
@@ -554,20 +523,6 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   _mm_storeu_ps(r2_vals, r2);
   _mm_storeu_ps(hit_flags, hit_mask);
 
-
-  /* for( int i=0; i< 4; i++){ */
-
-  /*   if( hit_flags[i] != 0xFFFFFFFF ) // no hit */
-  /*     continue; */
-  /*   printf("batch result:%i\t r1:%f\tr2:%f\tflag:%i\n",i, r1_vals[i], r2_vals[i], hit_flags[i] == 0xFFFFFFFF) ;     */
-  /* } */
-
-
-    /* typedef struct{ */
-  /*   float t1; */
-  /*   float t2; */
-  /*   const Sphere* sphere; */
-  /* } RaySphereIntersection; */
 
   // todo: this is ugly cleanup
 
@@ -597,11 +552,9 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
     // todo: recheck
     // Print result
     if (closest_sphere_idx != -1) {
-        /* printf("Closest hit: sphere %d at t=%f\n", closest_sphere_idx, closest_t); */
 	result.t1 = closest_t;
 	result.sphere = &(spheres[closest_sphere_idx]);
     } else {
-        /* printf("No hits in range [%f, %f]\n", t_min, t_max); */
     }
 
     return result;
@@ -877,29 +830,18 @@ V3 traceRayBatch(
 		   //		   ,ColorBuffer* const result
 		   ){
 
-  (void)Origin;
-  (void)directionBuffer;
-  (void)startAt;
-  (void)batchSize;
-  (void)t_min;
-  (void)t_max;
-  (void)recursion_depth;
-  (void)spheres;
-  (void)lights;
-  //  (void)result;
-
-    float closest_t = BIG_NUMBER;
+  float closest_t = BIG_NUMBER;
   const Sphere *closestSphere = NULL;
-  
-  /* RaySphereIntersection intersection = intersectRaySphereClosest(O, D, t_min, t_max, spheres, sphereCount); */
+
+  // scalar version vs simd
+/* RaySphereIntersection intersection = intersectRaySphereClosest(O, D, t_min, t_max, spheres, sphereCount); */
   RaySphereIntersection intersection = intersectRaySphereClosestBatched( O,
 									 directionBuffer,
 									 startAt,
 									 sphereBuffer,
-									 t_min,
-									 t_max,
+									 t_min_2,
+									 t_max_2,
 									 spheres);
-  
   closestSphere = intersection.sphere;
   closest_t = intersection.t1;
 
@@ -1186,36 +1128,6 @@ void fillRegion
       pixelIndex++;
     }
   }
-
-
-  V3 _o = {0, 0, 0};
-  V3 sphereColor = {0};
-  
-  /* for( int i =0; i< 8; i++) { */
-    
-  /*   printf("d.check:%d\thit:%i\tO: %f %f %f\tD : %f %f %f\tcolor : %f %f %f\n", */
-  /* 	   i, */
-  /* 	   -1, */
-  /* 	   _o.x, _o.y, _o.z, */
-
-  /* 	   directionsBuffer.x[i], */
-  /* 	   directionsBuffer.y[i], */
-  /* 	   directionsBuffer.z[i], */
-
-  /* 	   sphereColor.x, sphereColor.y, sphereColor.z); */
-  /* } */
-
-  /* printf("\n"); */
-  /* DirectionBuffer reducedDirections = {0}; */
-  /* reducedDirections.x = directionsBuffer.x; */
-  /* reducedDirections.y = directionsBuffer.y; */
-  /* reducedDirections.z = directionsBuffer.z; */
-  /* reducedDirections.count = 1; */
-  
-  /* intersectRaySphereBatched(_o, reducedDirections, sphereBuffer, EPSILON, BIG_NUMBER, spheres); */
-  
-  /* printf("\n"); */
-  
 
   
   size_t pixelCount = directionsBuffer.count; 
