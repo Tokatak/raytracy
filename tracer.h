@@ -359,17 +359,19 @@ RaySphereIntersection intersectRaySphereClosest(const V3 O, const V3 D, const fl
 
 // todo: dont like signature
 RaySphereIntersection intersectRaySphereBatched(const V3 O,
-			       const DirectionBuffer directionBuffer,
-			       const SphereBuffer sphereBuffer,
-			       float t_min, float t_max,
-			       Sphere* spheres);
+						const DirectionBuffer directionBuffer,
+						const size_t startAt,
+						const SphereBuffer sphereBuffer,	       
+						float t_min, float t_max,
+						const Sphere* spheres);
 // todo: prettify
 RaySphereIntersection intersectRaySphereClosestBatched(const V3 O,
 						       const DirectionBuffer directionBuffer,
+						       const size_t startAt,
 						       const SphereBuffer sphereBuffer,
 						       const float t_min,
 						       const float t_max,
-						       Sphere* spheres);
+						       const Sphere* spheres);
  
 
 static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){
@@ -437,22 +439,20 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
 
 // todo: dont like signature
 RaySphereIntersection intersectRaySphereBatched(const V3 O,
-			       const DirectionBuffer directionBuffer,
-			       const SphereBuffer sphereBuffer,
-			       float t_min, float t_max,
-			       Sphere* spheres){
+						const DirectionBuffer directionBuffer,
+						const size_t startAt,
+						const SphereBuffer sphereBuffer,
+						float t_min, float t_max,
+						const Sphere* spheres){
   //  RaySphereIntersection result = {0};
 
   // todo: expand for a generic case
   // for now, a limited behavior
   // 4 spheres 1 direction, provided by callser
 
-  (void)O;
-  (void)directionBuffer;
-  (void)sphereBuffer;
 
-  printf("called:%s\n", "intersectRaySphereBatched");
-  printf("dirs:%lli spheres:%lli\n", directionBuffer.count, sphereBuffer.count);
+  /* printf("called:%s\n", "tRaySphereBatched"); */
+  /* printf("dirs:%lli spheres:%lli\n", directionBuffer.count, sphereBuffer.count); */
 
   // RESULTS
   float r1_vals[4], r2_vals[4];
@@ -474,9 +474,9 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 
   // todo: direction -> directions
   // dx, dy, dz
-  tmp_x = _mm_set1_ps(directionBuffer.x[0]);
-  tmp_y = _mm_set1_ps(directionBuffer.y[0]);
-  tmp_z = _mm_set1_ps(directionBuffer.z[0]);
+  tmp_x = _mm_set1_ps(directionBuffer.x[startAt]);
+  tmp_y = _mm_set1_ps(directionBuffer.y[startAt]);
+  tmp_z = _mm_set1_ps(directionBuffer.z[startAt]);
 
   
   /* const float a = dx*dx + dy*dy + dz*dz;     */
@@ -488,9 +488,9 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 
 
   /* const float b = 2.0f * (ocx*dx + ocy*dy + ocz*dz); */
-  tmp_x = _mm_set1_ps(directionBuffer.x[0]);
-  tmp_y = _mm_set1_ps(directionBuffer.y[0]);
-  tmp_z = _mm_set1_ps(directionBuffer.z[0]);
+  tmp_x = _mm_set1_ps(directionBuffer.x[startAt]);
+  tmp_y = _mm_set1_ps(directionBuffer.y[startAt]);
+  tmp_z = _mm_set1_ps(directionBuffer.z[startAt]);
 
   tmp_x = _mm_mul_ps(tmp_x, ocx);
   tmp_y = _mm_mul_ps(tmp_y, ocy);
@@ -610,15 +610,17 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 
 RaySphereIntersection intersectRaySphereClosestBatched(const V3 O,
 						       const DirectionBuffer directionBuffer,
+						       const size_t startAt,
 						       const SphereBuffer sphereBuffer,
 						       const float t_min,
 						       const float t_max,
-						       Sphere* spheres){
+						       const Sphere* spheres){
 
   RaySphereIntersection result = {0};
   
   result = intersectRaySphereBatched(O,
 				     directionBuffer,
+				     startAt,
 				     sphereBuffer,
 				     t_min,  t_max,
 				     spheres);
@@ -719,12 +721,20 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 	     const Sphere* spheres, int sphereCount,
 	     Light* lights, int lightCount);
 
-void traceRayBatch(const V3 Origin,
-		   const DirectionBuffer directionBuffer,const size_t startAt,const size_t batchSize,
-		   const float t_min,const float t_max,const int recursion_depth,
-		   const SphereBuffer spheres,
-		   const LightBuffer lights,
-		   ColorBuffer* const result);
+
+V3 traceRayBatch(
+		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
+		   const Sphere* spheres, int sphereCount,
+		   Light* lights, int lightCount,
+
+		   const V3 Origin,
+		   const DirectionBuffer directionBuffer,
+		   const size_t startAt,const size_t batchSize,
+		   const float t_min_2,const float t_max_2,const int recursion_depth_2,
+		   const SphereBuffer sphereBuffer,
+		   const LightBuffer lightbuffer
+		   //,ColorBuffer* const result
+		   );
 
 
 void setPixelTexture(float x, float y, V3 color, Buffer *buffer);
@@ -848,17 +858,23 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
 }
 
 
-void traceRayBatch(
-		   /* V3 O, V3 D, float t_min, float t_max, int recursion_depth, */
-		   /* const Sphere* spheres, int sphereCount, */
-		   /* Light* lights, int lightCount, */
+// todo: cleanup legacy arguments
+V3 traceRayBatch(
+		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
+		   const Sphere* spheres, int sphereCount,
+		   Light* lights, int lightCount,
 
 		   const V3 Origin,
-		   const DirectionBuffer directionBuffer,const size_t startAt,const size_t batchSize,
-		   const float t_min,const float t_max,const int recursion_depth,
-		   const SphereBuffer spheres,
-		   const LightBuffer lights,
-		   ColorBuffer* const result
+		   const DirectionBuffer directionBuffer,
+
+		   // todo: propper handling
+		   const size_t startAt,const size_t batchSize,
+		   
+		   const float t_min_2,const float t_max_2,const int recursion_depth_2,
+		   const SphereBuffer sphereBuffer,
+		   const LightBuffer lightBuffer
+		   // todo: consider
+		   //		   ,ColorBuffer* const result
 		   ){
 
   (void)Origin;
@@ -870,72 +886,69 @@ void traceRayBatch(
   (void)recursion_depth;
   (void)spheres;
   (void)lights;
-  (void)result;
+  //  (void)result;
 
     float closest_t = BIG_NUMBER;
   const Sphere *closestSphere = NULL;
-
-  // todo: continue here!
   
   /* RaySphereIntersection intersection = intersectRaySphereClosest(O, D, t_min, t_max, spheres, sphereCount); */
-  // todo: cleanup
-
-  /* RaySphereIntersection intersection = intersectRaySphereClosestBatched( O, */
-  /* 									 directionBuffer, */
-  /* 									 sphereBuffer, */
-  /* 									 t_min, */
-  /* 									 t_max, */
-  /* 									 spheres); */
+  RaySphereIntersection intersection = intersectRaySphereClosestBatched( O,
+									 directionBuffer,
+									 startAt,
+									 sphereBuffer,
+									 t_min,
+									 t_max,
+									 spheres);
   
-  /* closestSphere = intersection.sphere; */
-  /* closest_t = intersection.t1; */
+  closestSphere = intersection.sphere;
+  closest_t = intersection.t1;
 
 
-  /* if( closestSphere == NULL ){ */
-  /*   return DEFAULT_COLOR; */
-  /* } */
+  if( closestSphere == NULL ){
+    return DEFAULT_COLOR;
+  }
   
-  /* // no light */
-  /* if(lightCount == 0){ */
-  /*   return closestSphere->color; */
-  /* } */
+  // no light
+  if(lightCount == 0){
+    return closestSphere->color;
+  }
   
-  /* // Lit */
-  /* V3 P; */
-  /* P.x = O.x + closest_t * D.x; */
-  /* P.y = O.y + closest_t * D.y; */
-  /* P.z = O.z + closest_t * D.z; */
+  // Lit
+  V3 P;
+  P.x = O.x + closest_t * D.x;
+  P.y = O.y + closest_t * D.y;
+  P.z = O.z + closest_t * D.z;
 
-  /* V3 N; */
-  /* N.x = P.x - closestSphere->position.x; */
-  /* N.y = P.y - closestSphere->position.y; */
-  /* N.z = P.z - closestSphere->position.z;; */
+  V3 N;
+  N.x = P.x - closestSphere->position.x;
+  N.y = P.y - closestSphere->position.y;
+  N.z = P.z - closestSphere->position.z;;
 
-  /* V3 local_color = closestSphere->color; */
+  V3 local_color = closestSphere->color;
 
-  /* V3 v = v3_negate(D); */
-  /* // v from object to camera = -D from camera to object */
-  /* float light = ComputeLighting(P,N,v,closestSphere->specular, spheres, sphereCount, lights, lightCount); */
+  V3 v = v3_negate(D);
+  // v from object to camera = -D from camera to object
+  float light = ComputeLighting(P,N,v,closestSphere->specular, spheres, sphereCount, lights, lightCount);
 
-  /* local_color.x *= light; */
-  /* local_color.y *= light; */
-  /* local_color.z *= light; */
+  local_color.x *= light;
+  local_color.y *= light;
+  local_color.z *= light;
 
-  /* float reflective = closestSphere->reflective; */
-  /* if ( recursion_depth <= 0 || reflective <=0 ){ */
-  /*   return local_color; */
-  /* } */
+  float reflective = closestSphere->reflective;
+  if ( recursion_depth <= 0 || reflective <=0 ){
+    return local_color;
+  }
 
-  /* // -D */
-  /* V3 R = {0};  */
-  /* ReflectRay(N,v,&R); */
-  /* V3 reflected_color = traceRay(P, R, EPSILON, BIG_NUMBER, recursion_depth-1, spheres, sphereCount, lights, lightCount); */
-  /* V3 result; */
-  /* result.x = local_color.x*(1-reflective) + reflected_color.x*reflective; */
-  /* result.y = local_color.y*(1-reflective) + reflected_color.y*reflective; */
-  /* result.z = local_color.z*(1-reflective) + reflected_color.z*reflective; */
+  // -D
+  V3 R = {0};
+  ReflectRay(N,v,&R);
+  V3 reflected_color = traceRay(P, R, EPSILON, BIG_NUMBER, recursion_depth-1, spheres, sphereCount, lights, lightCount);
+  V3 result;
+  result.x = local_color.x*(1-reflective) + reflected_color.x*reflective;
+  result.y = local_color.y*(1-reflective) + reflected_color.y*reflective;
+  result.z = local_color.z*(1-reflective) + reflected_color.z*reflective;
   
-  /* return result; */
+  return result;
 }
 
 void setPixelTexture(float x, float y, V3 color, Buffer *buffer) {
@@ -1178,30 +1191,30 @@ void fillRegion
   V3 _o = {0, 0, 0};
   V3 sphereColor = {0};
   
-  for( int i =0; i< 8; i++) {
+  /* for( int i =0; i< 8; i++) { */
     
-    printf("d.check:%d\thit:%i\tO: %f %f %f\tD : %f %f %f\tcolor : %f %f %f\n",
-	   i,
-	   -1,
-	   _o.x, _o.y, _o.z,
+  /*   printf("d.check:%d\thit:%i\tO: %f %f %f\tD : %f %f %f\tcolor : %f %f %f\n", */
+  /* 	   i, */
+  /* 	   -1, */
+  /* 	   _o.x, _o.y, _o.z, */
 
-	   directionsBuffer.x[i],
-	   directionsBuffer.y[i],
-	   directionsBuffer.z[i],
+  /* 	   directionsBuffer.x[i], */
+  /* 	   directionsBuffer.y[i], */
+  /* 	   directionsBuffer.z[i], */
 
-	   sphereColor.x, sphereColor.y, sphereColor.z);
-  }
+  /* 	   sphereColor.x, sphereColor.y, sphereColor.z); */
+  /* } */
 
-  printf("\n");
-  DirectionBuffer reducedDirections = {0};
-  reducedDirections.x = directionsBuffer.x;
-  reducedDirections.y = directionsBuffer.y;
-  reducedDirections.z = directionsBuffer.z;
-  reducedDirections.count = 1;
+  /* printf("\n"); */
+  /* DirectionBuffer reducedDirections = {0}; */
+  /* reducedDirections.x = directionsBuffer.x; */
+  /* reducedDirections.y = directionsBuffer.y; */
+  /* reducedDirections.z = directionsBuffer.z; */
+  /* reducedDirections.count = 1; */
   
-  intersectRaySphereBatched(_o, reducedDirections, sphereBuffer, EPSILON, BIG_NUMBER, spheres);
+  /* intersectRaySphereBatched(_o, reducedDirections, sphereBuffer, EPSILON, BIG_NUMBER, spheres); */
   
-  printf("\n");
+  /* printf("\n"); */
   
 
   
@@ -1210,11 +1223,26 @@ void fillRegion
     
     // TODO: conitnue here
     // LightBuffer, SphereBuffer, directionsBuffer
-    color = traceRay(origin,
-		     (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
-		     t_min, t_max, recursion_depth,
-		     spheres,  sphereCount,
-		     lights, lightCount);
+    /* color = traceRay(origin, */
+    /* 		     (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]}, */
+    /* 		     t_min, t_max, recursion_depth, */
+    /* 		     spheres,  sphereCount, */
+    /* 		     lights, lightCount); */
+
+    color = traceRayBatch(
+		   origin,
+		   (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
+		   t_min, t_max, recursion_depth,
+		   spheres,  sphereCount,
+		    lights, lightCount,
+
+		   origin,
+		   directionsBuffer,
+		   index, ////const  size_t startAt, // directions offset
+		   1, //const size_t batchSize,
+		   t_min, t_max, recursion_depth,
+		   sphereBuffer,
+		   lightBuffer);
 
       
     const int byteOffset = index * targetBufferColorComponents;
