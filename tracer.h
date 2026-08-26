@@ -530,34 +530,32 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   // Initialize results
   float closest_t = BIG_NUMBER;
   int closest_sphere_idx = -1;
-   // Find closest valid intersection
-    for (int i = 0; i < 4; i++) {
-        // Check if hit (all bits 1 = 0xFFFFFFFF)
-        if (hit_flags[i] == 0xFFFFFFFF) {
+  // Find closest valid intersection
+  for (int i = 0; i < 4; i++) {
+    if (*(int*)&hit_flags[i] < 0) {  // Check sign bit            
+      // Check t1 (usually the closer intersection)
+      if (r1_vals[i] > t_min && r1_vals[i] < t_max && r1_vals[i] < closest_t) {
+	closest_t = r1_vals[i];
+	closest_sphere_idx = i;
+      }
             
-            // Check t1 (usually the closer intersection)
-            if (r1_vals[i] > t_min && r1_vals[i] < t_max && r1_vals[i] < closest_t) {
-                closest_t = r1_vals[i];
-                closest_sphere_idx = i;
-            }
-            
-            // Check t2 as well
-            if (r2_vals[i] > t_min && r2_vals[i] < t_max && r2_vals[i] < closest_t) {
-                closest_t = r2_vals[i];
-                closest_sphere_idx = i;
-            }
-        }
+      // Check t2 as well
+      if (r2_vals[i] > t_min && r2_vals[i] < t_max && r2_vals[i] < closest_t) {
+	closest_t = r2_vals[i];
+	closest_sphere_idx = i;
+      }
     }
+  }
 
-    // todo: recheck
-    // Print result
-    if (closest_sphere_idx != -1) {
-	result.t1 = closest_t;
-	result.sphere = &(spheres[closest_sphere_idx]);
-    } else {
-    }
+  // todo: recheck
+  // Print result
+  if (closest_sphere_idx != -1) {
+    result.t1 = closest_t;
+    result.sphere = &(spheres[closest_sphere_idx]);
+  } else {
+  }
 
-    return result;
+  return result;
 }
 
 
