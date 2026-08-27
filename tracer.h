@@ -364,15 +364,8 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 						const SphereBuffer sphereBuffer,	       
 						float t_min, float t_max,
 						const Sphere* spheres);
-// todo: prettify
-RaySphereIntersection intersectRaySphereClosestBatched(const V3 O,
-						       const DirectionBuffer directionBuffer,
-						       const size_t startAt,
-						       const SphereBuffer sphereBuffer,
-						       const float t_min,
-						       const float t_max,
-						       const Sphere* spheres);
- 
+
+
 
 static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){
   const float twoNDotl = 2*v3_dot(R,N);
@@ -555,26 +548,6 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   } else {
   }
 
-  return result;
-}
-
-
-RaySphereIntersection intersectRaySphereClosestBatched(const V3 O,
-						       const DirectionBuffer directionBuffer,
-						       const size_t startAt,
-						       const SphereBuffer sphereBuffer,
-						       const float t_min,
-						       const float t_max,
-						       const Sphere* spheres){
-
-  RaySphereIntersection result = {0};
-  
-  result = intersectRaySphereBatched(O,
-				     directionBuffer,
-				     startAt,
-				     sphereBuffer,
-				     t_min,  t_max,
-				     spheres);
   return result;
 }
 
@@ -833,13 +806,12 @@ V3 traceRayBatch(
 
   // scalar version vs simd
 /* RaySphereIntersection intersection = intersectRaySphereClosest(O, D, t_min, t_max, spheres, sphereCount); */
-  RaySphereIntersection intersection = intersectRaySphereClosestBatched( O,
-									 directionBuffer,
-									 startAt,
-									 sphereBuffer,
-									 t_min_2,
-									 t_max_2,
-									 spheres);
+  RaySphereIntersection intersection = intersectRaySphereBatched(O,
+								 directionBuffer,
+								 startAt,
+								 sphereBuffer,
+								 t_min,  t_max,
+								 spheres);    
   closestSphere = intersection.sphere;
   closest_t = intersection.t1;
 
