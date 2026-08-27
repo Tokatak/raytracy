@@ -805,7 +805,7 @@ V3 traceRayBatch(
   const Sphere *closestSphere = NULL;
 
   // scalar version vs simd
-/* RaySphereIntersection intersection = intersectRaySphereClosest(O, D, t_min, t_max, spheres, sphereCount); */
+  /* RaySphereIntersection intersection = intersectRaySphereClosest(O, D, t_min, t_max, spheres, sphereCount); */
   RaySphereIntersection intersection = intersectRaySphereBatched(O,
 								 directionBuffer,
 								 startAt,
@@ -854,7 +854,46 @@ V3 traceRayBatch(
   // -D
   V3 R = {0};
   ReflectRay(N,v,&R);
-  V3 reflected_color = traceRay(P, R, EPSILON, BIG_NUMBER, recursion_depth-1, spheres, sphereCount, lights, lightCount);
+  /* V3 reflected_color = traceRay(P, R, */
+  /* 				EPSILON, BIG_NUMBER, */
+  /* 				recursion_depth-1, */
+  /* 				spheres, sphereCount, */
+  /* 				lights, lightCount); */
+
+
+  // todo: consider getting read of stack allocation?
+  float x_buffer[1];
+  float y_buffer[1];
+  float z_buffer[1];  
+  DirectionBuffer recursive_directions = {0};
+  recursive_directions.count = 1;
+  recursive_directions.x = x_buffer;
+  recursive_directions.y = y_buffer;
+  recursive_directions.z = z_buffer;
+  x_buffer[0] = R.x;
+  y_buffer[0] = R.y;
+  z_buffer[0] = R.z;  
+  V3 reflected_color =
+    traceRayBatch(
+		  P, R,
+		  EPSILON, BIG_NUMBER,
+		  recursion_depth-1,
+		  spheres,  sphereCount,
+		  lights,  lightCount,
+		  P,
+		  recursive_directions,
+		  // todo: 1 at a time? 
+		  0,
+		  // todo: 1 at a time? 
+		  1,
+		   
+		  EPSILON, BIG_NUMBER,
+		  recursion_depth_2-1,
+		  sphereBuffer,
+		  lightBuffer
+		  );
+
+  
   V3 result;
   result.x = local_color.x*(1-reflective) + reflected_color.x*reflective;
   result.y = local_color.y*(1-reflective) + reflected_color.y*reflective;
@@ -1103,13 +1142,14 @@ void fillRegion
   size_t pixelCount = directionsBuffer.count; 
   for ( size_t index = 0; index< pixelCount; index++){
     
-    // TODO: conitnue here
-    // LightBuffer, SphereBuffer, directionsBuffer
-    /* color = traceRay(origin, */
-    /* 		     (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]}, */
-    /* 		     t_min, t_max, recursion_depth, */
-    /* 		     spheres,  sphereCount, */
-    /* 		     lights, lightCount); */
+    //todo: provide test runs for scalar and simd
+    #ifdef SCALAR
+    color = traceRay(origin,
+		     (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
+		     t_min, t_max, recursion_depth,
+		     spheres,  sphereCount,
+		     lights, lightCount);
+    #else
 
     color = traceRayBatch(
 		   origin,
@@ -1125,6 +1165,7 @@ void fillRegion
 		   t_min, t_max, recursion_depth,
 		   sphereBuffer,
 		   lightBuffer);
+    #endif 
 
       
     const int byteOffset = index * targetBufferColorComponents;
