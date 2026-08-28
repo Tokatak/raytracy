@@ -641,6 +641,18 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
 		      const Sphere* spheres, int sphereCount,
 		      Light* lights, int lightCount);
 
+float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
+			   const Sphere* spheres, int sphereCount,
+			   Light* lights, int lightCount,
+			   
+			   const V3 Origin,
+			   const DirectionBuffer directionBuffer,
+			   const size_t startAt,const size_t batchSize,
+			   const float t_min_2,const float t_max_2,const int recursion_depth_2,
+			   const SphereBuffer sphereBuffer,
+			   const LightBuffer lightbuffer
+			   );
+
 V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 	     const Sphere* spheres, int sphereCount,
 	     Light* lights, int lightCount);
@@ -669,6 +681,80 @@ void fillRegion
   float t_min, float t_max, int recursion_depth,
   Sphere* spheres, int sphereCount,
   Light* lights, int lightCount);
+
+float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
+			   const Sphere* spheres, int sphereCount,
+			   Light* lights, int lightCount,
+			   
+			   const V3 Origin,
+			   const DirectionBuffer directionBuffer,
+			   const size_t startAt,const size_t batchSize,
+			   const float t_min_2,const float t_max_2,const int recursion_depth_2,
+			   const SphereBuffer sphereBuffer,
+			   const LightBuffer lightbuffer
+			   ){
+
+  float intensity = 0.0;
+  V3 L;
+  V3 Reflection;
+
+  float N_len = v3_len(N);
+  float View_len = v3_len(View);
+
+  for( int i =0; i< lightCount; i++){
+    Light* l = lights+i;
+
+    if (l->type == LIGHT_AMBIENT){
+      intensity += l->intensity;
+      continue;
+    }
+
+    float t_max;
+    if ( l->type == LIGHT_POINT ){
+      L = v3_sub(l->position, P);
+      t_max = 1;
+    } else { // DIRECTIONAL
+      L = l->position;
+      t_max = BIG_NUMBER;
+    }
+
+    /* RaySphereIntersection intersection = */
+    /*   intersectRaySphereClosest(P, L, EPSILON, t_max, spheres, sphereCount); */
+
+
+    // todo: continue here
+    // todo: pack lights in direction buffer  
+    
+    RaySphereIntersection intersection = intersectRaySphereBatched(P,
+								   directionBuffer,
+								   0,//startAt, 
+								   sphereBuffer,
+								   EPSILON,  t_max,
+								   spheres);    
+    
+    if( intersection.sphere != NULL ){
+      continue;
+    }
+
+    // DIFFUSE
+    float nDotl = v3_dot( N, L);
+    if ( nDotl > 0 ){
+      intensity += l->intensity * nDotl / (N_len * v3_len(L)) ;
+    }
+
+    // SPECULAR
+    if ( s != -1){
+      ReflectRay(N,L,&Reflection);
+      
+      float rDotV = v3_dot( Reflection, View);
+      if (rDotV >0){
+	intensity += l->intensity * powf( rDotV / (v3_len(Reflection) * View_len), s );
+      }
+    }
+    
+  }
+  return intensity;
+}
 
 float ComputeLighting(V3 P, V3 N, V3 View, float s,
 		      const Sphere* spheres, int sphereCount,
