@@ -726,7 +726,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     // todo: pack lights in direction buffer  
     
     RaySphereIntersection intersection = intersectRaySphereBatched(P,
-								   directionBuffer,
+								   directionBuffer,// WRONG BUFFER!
 								   0,//startAt, 
 								   sphereBuffer,
 								   EPSILON,  t_max,
@@ -1019,8 +1019,8 @@ void fillRegion
 ( Region region, Camera camera,
   Buffer buffer,PixelLayout layout,
   float t_min, float t_max, int recursion_depth,
-  Sphere* spheres, int sphereCount,
-  Light* lights, int lightCount)
+  Sphere* restrict spheres, int sphereCount,
+  Light* restrict lights, int lightCount)
 {
   V3 origin = camera.position;
   V3 cameraDirection = camera.direction;
