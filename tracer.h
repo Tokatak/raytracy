@@ -422,131 +422,152 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 
   // RESULTS
   float r1_vals[4], r2_vals[4];
-    //todo: consider mask?
+  //todo: consider mask?
   float hit_flags[4];
   // RESULTS
-  
-  __m128 tmp_x = _mm_load_ps(sphereBuffer.x); //load 4 floats
-  __m128 tmp_y = _mm_load_ps(sphereBuffer.y);
-  __m128 tmp_z = _mm_load_ps(sphereBuffer.z);
- 
-  __m128 ocx = _mm_set1_ps(O.x); // load scalar
-  __m128 ocy = _mm_set1_ps(O.y);
-  __m128 ocz = _mm_set1_ps(O.z);
 
-  ocx = _mm_sub_ps(ocx, tmp_x);
-  ocy = _mm_sub_ps(ocy, tmp_y);
-  ocz = _mm_sub_ps(ocz, tmp_z);
-
-  // dx, dy, dz
-  tmp_x = _mm_set1_ps(directionBuffer.x[startAt]);
-  tmp_y = _mm_set1_ps(directionBuffer.y[startAt]);
-  tmp_z = _mm_set1_ps(directionBuffer.z[startAt]);
-
-  
-  /* const float a = dx*dx + dy*dy + dz*dz;     */
-  // todo: check if reuse tmp_ is better then new set of registers
-  tmp_x = _mm_mul_ps(tmp_x, tmp_x);
-  tmp_y = _mm_mul_ps(tmp_y, tmp_y);
-  tmp_z = _mm_mul_ps(tmp_z, tmp_z);
-  __m128 a = _mm_add_ps(_mm_add_ps(tmp_x, tmp_y), tmp_z);
-
-
-  /* const float b = 2.0f * (ocx*dx + ocy*dy + ocz*dz); */
-  tmp_x = _mm_set1_ps(directionBuffer.x[startAt]);
-  tmp_y = _mm_set1_ps(directionBuffer.y[startAt]);
-  tmp_z = _mm_set1_ps(directionBuffer.z[startAt]);
-
-  tmp_x = _mm_mul_ps(tmp_x, ocx);
-  tmp_y = _mm_mul_ps(tmp_y, ocy);
-  tmp_z = _mm_mul_ps(tmp_z, ocz);
-  __m128 b = _mm_add_ps(_mm_add_ps(tmp_x, tmp_y), tmp_z);
-  b = _mm_add_ps(b,b);
-  
-  
-  /* const float c = ocx*ocx + ocy*ocy + ocz*ocz - rr; */
-  ocx = _mm_mul_ps(ocx, ocx);
-  ocy = _mm_mul_ps(ocy, ocy);
-  ocz = _mm_mul_ps(ocz, ocz);
-
-  // todo: handle several buffers
-  tmp_x = _mm_load_ps(sphereBuffer.rr);
-
-  
-  //  const float c = ocx*ocx + ocy*ocy + ocz*ocz - rr;
-  __m128 c = _mm_add_ps(_mm_add_ps(ocx, ocy ), ocz);
-  // rr
-  c = _mm_sub_ps(c, tmp_x);
-  
-  ///////////
-  // float discriminant = b*b - 4*a*c;
-  __m128 disc = _mm_sub_ps(
-			   _mm_mul_ps(b,b),
-			   _mm_mul_ps(
-				      _mm_mul_ps(a,c),
-				      _mm_set1_ps(4)
-				      )
-			   ); 
- 
-  __m128 zero = _mm_setzero_ps();
-  // todo:  consider using mask? 
-  __m128 hit_mask = _mm_cmpge_ps(disc, zero);  // 0xFFFFFFFF (-Nan) for hit, 0 for miss
-   // hit_flags[i] == 0xFFFFFFFF =1 for hit
-
-  disc = _mm_sqrt_ps(disc);
-
-  // inv a
-  a =_mm_div_ps(_mm_set1_ps(1.0f), _mm_add_ps(a,a));
-
-  __m128 center = _mm_mul_ps(_mm_sub_ps(zero, b), a);
-  __m128 offset = _mm_mul_ps(disc, a);
-
-
-  __m128 r1 = _mm_add_ps(center, offset);
-  __m128 r2 = _mm_sub_ps(center, offset);
-  
-
-  // hit_mask is -1 (all bits 1) for hits
-  /* __m128 r1_masked = _mm_and_ps(r1, hit_mask);  */
-  /* __m128 r2_masked = _mm_and_ps(r2, hit_mask); */
-
-
-  // 6. Store results
-  _mm_storeu_ps(r1_vals, r1);
-  _mm_storeu_ps(r2_vals, r2);
-  _mm_storeu_ps(hit_flags, hit_mask);
-
-
-  // todo: this is ugly cleanup
+  __m128 tmp_x;
+  __m128 tmp_y;
+  __m128 tmp_z;
 
   RaySphereIntersection result = {0};
-  // Initialize results
-  float closest_t = BIG_NUMBER;
-  int closest_sphere_idx = -1;
-  // Find closest valid intersection
-  for (int i = 0; i < 4; i++) {
-    if (*(int*)&hit_flags[i] < 0) {  // Check sign bit            
-      // Check t1 (usually the closer intersection)
-      if (r1_vals[i] > t_min && r1_vals[i] < t_max && r1_vals[i] < closest_t) {
-	closest_t = r1_vals[i];
-	closest_sphere_idx = i;
-      }
-            
-      // Check t2 as well
-      if (r2_vals[i] > t_min && r2_vals[i] < t_max && r2_vals[i] < closest_t) {
-	closest_t = r2_vals[i];
-	closest_sphere_idx = i;
-      }
-    }
-  }
+ 
+  for ( int sphereBatch = 0; sphereBatch < sphereBuffer.count; sphereBatch+=4 )
+    {      
+      tmp_x = _mm_load_ps(sphereBuffer.x+sphereBatch); //load 4 floats
+      tmp_y = _mm_load_ps(sphereBuffer.y+sphereBatch);
+      tmp_z = _mm_load_ps(sphereBuffer.z+sphereBatch);
+ 
+      __m128 ocx = _mm_set1_ps(O.x); // load scalar
+      __m128 ocy = _mm_set1_ps(O.y);
+      __m128 ocz = _mm_set1_ps(O.z);
 
-  // todo: recheck
-  // Print result
-  if (closest_sphere_idx != -1) {
-    result.t1 = closest_t;
-    result.sphere = &(spheres[closest_sphere_idx]);
-  } else {
-  }
+      ocx = _mm_sub_ps(ocx, tmp_x);
+      ocy = _mm_sub_ps(ocy, tmp_y);
+      ocz = _mm_sub_ps(ocz, tmp_z);
+
+      // dx, dy, dz
+      tmp_x = _mm_set1_ps(directionBuffer.x[startAt]);
+      tmp_y = _mm_set1_ps(directionBuffer.y[startAt]);
+      tmp_z = _mm_set1_ps(directionBuffer.z[startAt]);
+
+  
+      /* const float a = dx*dx + dy*dy + dz*dz;     */
+      // todo: check if reuse tmp_ is better then new set of registers
+      tmp_x = _mm_mul_ps(tmp_x, tmp_x);
+      tmp_y = _mm_mul_ps(tmp_y, tmp_y);
+      tmp_z = _mm_mul_ps(tmp_z, tmp_z);
+      __m128 a = _mm_add_ps(_mm_add_ps(tmp_x, tmp_y), tmp_z);
+
+
+      /* const float b = 2.0f * (ocx*dx + ocy*dy + ocz*dz); */
+      tmp_x = _mm_set1_ps(directionBuffer.x[startAt]);
+      tmp_y = _mm_set1_ps(directionBuffer.y[startAt]);
+      tmp_z = _mm_set1_ps(directionBuffer.z[startAt]);
+
+      tmp_x = _mm_mul_ps(tmp_x, ocx);
+      tmp_y = _mm_mul_ps(tmp_y, ocy);
+      tmp_z = _mm_mul_ps(tmp_z, ocz);
+      __m128 b = _mm_add_ps(_mm_add_ps(tmp_x, tmp_y), tmp_z);
+      b = _mm_add_ps(b,b);
+  
+  
+      /* const float c = ocx*ocx + ocy*ocy + ocz*ocz - rr; */
+      ocx = _mm_mul_ps(ocx, ocx);
+      ocy = _mm_mul_ps(ocy, ocy);
+      ocz = _mm_mul_ps(ocz, ocz);
+
+      // todo: handle several buffers
+      tmp_x = _mm_load_ps(sphereBuffer.rr+sphereBatch);
+
+  
+      //  const float c = ocx*ocx + ocy*ocy + ocz*ocz - rr;
+      __m128 c = _mm_add_ps(_mm_add_ps(ocx, ocy ), ocz);
+      // rr
+      c = _mm_sub_ps(c, tmp_x);
+  
+      ///////////
+      // float discriminant = b*b - 4*a*c;
+      __m128 disc = _mm_sub_ps(
+			       _mm_mul_ps(b,b),
+			       _mm_mul_ps(
+					  _mm_mul_ps(a,c),
+					  _mm_set1_ps(4)
+					  )
+			       ); 
+ 
+      __m128 zero = _mm_setzero_ps();
+      // todo:  consider using mask? 
+      __m128 hit_mask = _mm_cmpge_ps(disc, zero);  // 0xFFFFFFFF (-Nan) for hit, 0 for miss
+      // hit_flags[i] == 0xFFFFFFFF =1 for hit
+
+      disc = _mm_sqrt_ps(disc);
+
+      // inv a
+      a =_mm_div_ps(_mm_set1_ps(1.0f), _mm_add_ps(a,a));
+
+      __m128 center = _mm_mul_ps(_mm_sub_ps(zero, b), a);
+      __m128 offset = _mm_mul_ps(disc, a);
+
+
+      __m128 r1 = _mm_add_ps(center, offset);
+      __m128 r2 = _mm_sub_ps(center, offset);
+  
+
+      // hit_mask is -1 (all bits 1) for hits
+      /* __m128 r1_masked = _mm_and_ps(r1, hit_mask);  */
+      /* __m128 r2_masked = _mm_and_ps(r2, hit_mask); */
+
+
+      // 6. Store results
+      _mm_storeu_ps(r1_vals, r1);
+      _mm_storeu_ps(r2_vals, r2);
+      _mm_storeu_ps(hit_flags, hit_mask);
+
+
+      // todo: this is ugly cleanup
+
+
+      // Initialize results
+      float closest_t = BIG_NUMBER;
+      int closest_sphere_idx = -1;
+      // Find closest valid intersection
+      for (int i = 0; i < 4; i++) {
+	if (*(int*)&hit_flags[i] < 0) {  // Check sign bit            
+	  // Check t1 (usually the closer intersection)
+	  if (r1_vals[i] > t_min && r1_vals[i] < t_max && r1_vals[i] < closest_t) {
+	    closest_t = r1_vals[i];
+	    closest_sphere_idx = i + sphereBatch;
+	  }
+            
+	  // Check t2 as well
+	  if (r2_vals[i] > t_min && r2_vals[i] < t_max && r2_vals[i] < closest_t) {
+	    closest_t = r2_vals[i];
+	    closest_sphere_idx = i + sphereBatch;;
+	  }
+	}
+      }
+
+      // todo: recheck, cleanup, add more comments
+      // Print result
+      if (closest_sphere_idx != -1) {
+
+	if( result.sphere){
+	  // sphere found on prev batch, compare
+	  if ( result.t1 > closest_t){
+	    result.t1 = closest_t;
+	    result.sphere = &(spheres[closest_sphere_idx]);
+	  }	  
+	}
+	else {
+	  result.t1 = closest_t;
+	  result.sphere = &(spheres[closest_sphere_idx]);
+	}
+      }
+      else
+	{
+	}      
+    }  
 
   return result;
 }
@@ -1124,17 +1145,20 @@ void fillRegion
     float r = spheres[i].radius;
     spheres[i]._rr = r*r;
   }
+
+  // todo: 4 floats for now, but consider more
+  int paddedSphereCount = ((sphereCount +3)/4)*4;
   SphereBuffer sphereBuffer ={0};
-  sphereBuffer.x = malloc(sizeof(float_t)*sphereCount);
-  sphereBuffer.y = malloc(sizeof(float_t)*sphereCount);
-  sphereBuffer.z = malloc(sizeof(float_t)*sphereCount);
-  sphereBuffer.radius = malloc(sizeof(float_t)*sphereCount);
-  sphereBuffer.r = malloc(sizeof(float_t)*sphereCount);
-  sphereBuffer.g = malloc(sizeof(float_t)*sphereCount);
-  sphereBuffer.b = malloc(sizeof(float_t)*sphereCount);
-  sphereBuffer.specular = malloc(sizeof(float_t)*sphereCount);
-  sphereBuffer.reflective = malloc(sizeof(float_t)*sphereCount);
-  sphereBuffer.rr = malloc(sizeof(float_t)*sphereCount);
+  sphereBuffer.x = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer.y = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer.z = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer.radius = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer.r = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer.g = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer.b = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer.specular = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer.reflective = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer.rr = malloc(sizeof(float_t)*paddedSphereCount);
   sphereBuffer.count = sphereCount;
   for(int i =0; i< sphereCount; i++ ){
     Sphere s = spheres[i];
