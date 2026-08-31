@@ -407,18 +407,13 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
 }
 
 
-
-// todo: dont like signature
 RaySphereIntersection intersectRaySphereBatched(const V3 O,
 						const DirectionBuffer directionBuffer,
 						const size_t startAt,
 						const SphereBuffer sphereBuffer,
 						float t_min, float t_max,
 						const Sphere* spheres){
-  // todo: expand for a generic case
-  // for now, a limited behavior
-  // 4 spheres, directions buffer offsetted
-
+  
   // RESULTS
   float r1_vals[4], r2_vals[4];
   //todo: consider mask?
@@ -431,11 +426,11 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 
   RaySphereIntersection result = {0};
  
-  for ( int sphereBatch = 0; sphereBatch < sphereBuffer.count; sphereBatch+=4 )
+  for ( int sphereBatchOffset = 0; sphereBatchOffset < sphereBuffer.count; sphereBatchOffset+=4 )
     {      
-      tmp_x = _mm_load_ps(sphereBuffer.x+sphereBatch); //load 4 floats
-      tmp_y = _mm_load_ps(sphereBuffer.y+sphereBatch);
-      tmp_z = _mm_load_ps(sphereBuffer.z+sphereBatch);
+      tmp_x = _mm_load_ps(sphereBuffer.x+sphereBatchOffset); //load 4 floats
+      tmp_y = _mm_load_ps(sphereBuffer.y+sphereBatchOffset);
+      tmp_z = _mm_load_ps(sphereBuffer.z+sphereBatchOffset);
  
       __m128 ocx = _mm_set1_ps(O.x); // load scalar
       __m128 ocy = _mm_set1_ps(O.y);
@@ -476,9 +471,7 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
       ocy = _mm_mul_ps(ocy, ocy);
       ocz = _mm_mul_ps(ocz, ocz);
 
-      // todo: handle several buffers
-      tmp_x = _mm_load_ps(sphereBuffer.rr+sphereBatch);
-
+      tmp_x = _mm_load_ps(sphereBuffer.rr + sphereBatchOffset);
   
       //  const float c = ocx*ocx + ocy*ocy + ocz*ocz - rr;
       __m128 c = _mm_add_ps(_mm_add_ps(ocx, ocy ), ocz);
@@ -536,13 +529,13 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 	  // Check t1 (usually the closer intersection)
 	  if (r1_vals[i] > t_min && r1_vals[i] < t_max && r1_vals[i] < closest_t) {
 	    closest_t = r1_vals[i];
-	    closest_sphere_idx = i + sphereBatch;
+	    closest_sphere_idx = i + sphereBatchOffset;
 	  }
             
 	  // Check t2 as well
 	  if (r2_vals[i] > t_min && r2_vals[i] < t_max && r2_vals[i] < closest_t) {
 	    closest_t = r2_vals[i];
-	    closest_sphere_idx = i + sphereBatch;;
+	    closest_sphere_idx = i + sphereBatchOffset;
 	  }
 	}
       }
