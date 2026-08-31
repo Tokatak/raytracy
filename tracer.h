@@ -248,7 +248,6 @@ float v3_dot(const V3 a,const V3 b){
 
 static inline
 float v3_len(const V3 v){
-  // TODO: check sqrtf
   return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z);
 }
 
