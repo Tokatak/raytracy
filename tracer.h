@@ -659,8 +659,8 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 			   Light* lights, int lightCount,
 			   
 			   const V3 Origin,
-			   const DirectionBuffer directionBuffer,
-			   const size_t startAt,const size_t batchSize,
+			   //	   const DirectionBuffer directionBuffer,
+			   //			   const size_t startAt,const size_t batchSize,
 			   const float t_min_2,const float t_max_2,const int recursion_depth_2,
 			   const SphereBuffer sphereBuffer,
 			   const LightBuffer lightbuffer
@@ -700,8 +700,8 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 			   Light* lights, int lightCount,
 			   
 			   const V3 Origin,
-			   const DirectionBuffer directionBuffer,
-			   const size_t startAt,const size_t batchSize,
+			   //			   const DirectionBuffer directionBuffer,
+			   //			   const size_t startAt,const size_t batchSize,
 			   const float t_min_2,const float t_max_2,const int recursion_depth_2,
 			   const SphereBuffer sphereBuffer,
 			   const LightBuffer lightbuffer
@@ -736,14 +736,26 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 
 
     // todo: continue here
-    // todo: pack lights in direction buffer  
+    // todo: pack lights in direction buffer
+    // todo: handle allocation
+    float x_buffer[1];
+    float y_buffer[1];
+    float z_buffer[1];
+    DirectionBuffer lightDirectionBuffer ={0};
+    lightDirectionBuffer.count = 1;
+    lightDirectionBuffer.x = x_buffer;
+    lightDirectionBuffer.y = y_buffer;
+    lightDirectionBuffer.z = z_buffer;
+    x_buffer[0] = L.x;
+    y_buffer[0] = L.y;
+    z_buffer[0] = L.z;
     
     RaySphereIntersection intersection = intersectRaySphereBatched(P,
-								   directionBuffer,// WRONG BUFFER!
-								   0,//startAt, 
+								   lightDirectionBuffer,
+								   0,//startAt,
 								   sphereBuffer,
 								   EPSILON,  t_max,
-								   spheres);    
+								   spheres);
     
     if( intersection.sphere != NULL ){
       continue;
@@ -933,13 +945,25 @@ V3 traceRayBatch(
   V3 N;
   N.x = P.x - closestSphere->position.x;
   N.y = P.y - closestSphere->position.y;
-  N.z = P.z - closestSphere->position.z;;
+  N.z = P.z - closestSphere->position.z;
 
   V3 local_color = closestSphere->color;
 
   V3 v = v3_negate(D);
   // v from object to camera = -D from camera to object
-  float light = ComputeLighting(P,N,v,closestSphere->specular, spheres, sphereCount, lights, lightCount);
+  /* float light = ComputeLighting(P,N,v,closestSphere->specular, spheres, sphereCount, lights, lightCount); */  
+  
+  float light = ComputeLightingBatch ( P,  N, v, closestSphere->specular,
+				       spheres, sphereCount, lights, lightCount,
+			   
+				       P,
+				       //   directionBuffer,
+				       // startAt, batchSize,
+				       t_min_2, t_max_2, recursion_depth_2,
+				       sphereBuffer,
+				       lightBuffer
+				       );
+
 
   local_color.x *= light;
   local_color.y *= light;
@@ -1251,7 +1275,7 @@ void fillRegion
 		     t_min, t_max, recursion_depth,
 		     spheres,  sphereCount,
 		     lights, lightCount);
-    #else
+    #else 
 
     color = traceRayBatch(
 		   origin,
