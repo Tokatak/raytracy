@@ -714,6 +714,34 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
   float N_len = v3_len(N);
   float View_len = v3_len(View);
 
+  // todo: handle allocation
+  float x_buffer[1];
+  float y_buffer[1];
+  float z_buffer[1];
+  DirectionBuffer lightDirectionBuffer ={0};
+  lightDirectionBuffer.count = 1;
+  lightDirectionBuffer.x = x_buffer;
+  lightDirectionBuffer.y = y_buffer;
+  lightDirectionBuffer.z = z_buffer;
+
+  // continue here: bug
+  // overlit
+  /* __m128 light_buffer; */
+  /* for ( size_t light_offset =0; light_offset< lightbuffer.ambient_count; light_offset+=4){ */
+  /*   light_buffer = _mm_load_ps(lightbuffer.ambient_+light_offset); */
+
+  /*    // Add high half to low half */
+  /*   __m128 high = _mm_movehl_ps(light_buffer, light_buffer);  // high = [c, d, c, d] */
+  /*   __m128 sum = _mm_add_ps(light_buffer, high);   // sum = [a+c, b+d, c+c, d+d] */
+    
+  /*   // Add the two low values together */
+  /*   __m128 low = _mm_shuffle_ps(sum, sum, _MM_SHUFFLE(1, 0, 1, 0));  // low = [b+d, a+c, b+d, a+c] */
+  /*   sum = _mm_add_ss(sum, low);  // Add only the lowest elements: sum[0] = sum[0] + low[0] */
+    
+  /*   intensity +=  _mm_cvtss_f32(sum);  */
+  /* } */
+  
+
   for( int i =0; i< lightCount; i++){
     Light* l = lights+i;
 
@@ -734,18 +762,9 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     /* RaySphereIntersection intersection = */
     /*   intersectRaySphereClosest(P, L, EPSILON, t_max, spheres, sphereCount); */
 
-
     // todo: continue here
     // todo: pack lights in direction buffer
-    // todo: handle allocation
-    float x_buffer[1];
-    float y_buffer[1];
-    float z_buffer[1];
-    DirectionBuffer lightDirectionBuffer ={0};
-    lightDirectionBuffer.count = 1;
-    lightDirectionBuffer.x = x_buffer;
-    lightDirectionBuffer.y = y_buffer;
-    lightDirectionBuffer.z = z_buffer;
+    
     x_buffer[0] = L.x;
     y_buffer[0] = L.y;
     z_buffer[0] = L.z;
@@ -1111,20 +1130,26 @@ void fillRegion
     }
   }
 
+  // todo: 4 floats for now, but consider more
+  int paddedAmbient = ((ambient +3)/4)*4;  
   lightBuffer.ambient_count = ambient;
-  lightBuffer.ambient_intensity = malloc(ambient*sizeof(float));
+  lightBuffer.ambient_intensity = malloc(paddedAmbient*sizeof(float));
 
+  // todo: 4 floats for now, but consider more
+  int paddedPoint = ((point +3)/4)*4;  
   lightBuffer.point_count = point;
-  lightBuffer.point_x = malloc(point*sizeof(float));
-  lightBuffer.point_y = malloc(point*sizeof(float));
-  lightBuffer.point_z = malloc(point*sizeof(float));
-  lightBuffer.point_intensity = malloc(point*sizeof(float));
+  lightBuffer.point_x = malloc(paddedPoint*sizeof(float));
+  lightBuffer.point_y = malloc(paddedPoint*sizeof(float));
+  lightBuffer.point_z = malloc(paddedPoint*sizeof(float));
+  lightBuffer.point_intensity = malloc(paddedPoint*sizeof(float));
 
+  // todo: 4 floats for now, but consider more
+  int paddedDir = ((dir +3)/4)*4;  
   lightBuffer.dir_count = dir;
-  lightBuffer.dir_x = malloc(dir*sizeof(float));
-  lightBuffer.dir_y = malloc(dir*sizeof(float));
-  lightBuffer.dir_z = malloc(dir*sizeof(float));
-  lightBuffer.dir_intensity = malloc(dir*sizeof(float)); 
+  lightBuffer.dir_x = malloc(paddedDir*sizeof(float));
+  lightBuffer.dir_y = malloc(paddedDir*sizeof(float));
+  lightBuffer.dir_z = malloc(paddedDir*sizeof(float));
+  lightBuffer.dir_intensity = malloc(paddedDir*sizeof(float)); 
 
   size_t ambient_idx = 0, point_idx = 0, dir_idx = 0;
   for (int i=0; i< lightCount; i++){
@@ -1269,6 +1294,7 @@ void fillRegion
   for ( size_t index = 0; index< pixelCount; index++){
     
     //todo: provide test runs for scalar and simd
+    /* #define SCALAR */
     #ifdef SCALAR
     color = traceRay(origin,
 		     (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
