@@ -695,6 +695,9 @@ void fillRegion
   Sphere* spheres, int sphereCount,
   Light* lights, int lightCount);
 
+int logcount = 10;
+int logs = 0;
+
 float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 			   const Sphere* spheres, int sphereCount,
 			   Light* lights, int lightCount,
@@ -724,32 +727,62 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
   lightDirectionBuffer.y = y_buffer;
   lightDirectionBuffer.z = z_buffer;
 
-  // continue here: bug
-  // overlit
-  /* __m128 light_buffer; */
-  /* for ( size_t light_offset =0; light_offset< lightbuffer.ambient_count; light_offset+=4){ */
-  /*   light_buffer = _mm_load_ps(lightbuffer.ambient_+light_offset); */
 
-  /*    // Add high half to low half */
-  /*   __m128 high = _mm_movehl_ps(light_buffer, light_buffer);  // high = [c, d, c, d] */
-  /*   __m128 sum = _mm_add_ps(light_buffer, high);   // sum = [a+c, b+d, c+c, d+d] */
+#ifdef DEBUG_AMBIENT
+  // debug
+  float r1_vals[4];
+#endif
+  
+  __m128 light_buffer;
+  for ( size_t light_offset =0; light_offset< lightbuffer.ambient_count; light_offset+=4){
+    light_buffer = _mm_load_ps(lightbuffer.ambient_intensity + light_offset);
+
+#ifdef DEBUG_AMBIENT
+
+    if(logs<logcount)
+      {
+	_mm_storeu_ps(r1_vals, light_buffer);
+	printf("loaded: %f\t %f\t %f\t%f\n", r1_vals[0],r1_vals[1],r1_vals[2],r1_vals[3]);
+      }
+#endif    
     
-  /*   // Add the two low values together */
-  /*   __m128 low = _mm_shuffle_ps(sum, sum, _MM_SHUFFLE(1, 0, 1, 0));  // low = [b+d, a+c, b+d, a+c] */
-  /*   sum = _mm_add_ss(sum, low);  // Add only the lowest elements: sum[0] = sum[0] + low[0] */
-    
-  /*   intensity +=  _mm_cvtss_f32(sum);  */
-  /* } */
+     // horizontal
+    __m128 sum = _mm_hadd_ps(light_buffer,light_buffer);    // [1+2, 3+4, 1+2, 3+4]
+
+#ifdef DEBUG_AMBIENT
+    if(logs<logcount)
+      {
+	_mm_storeu_ps(r1_vals, sum);
+	printf("hadd:\t%f\t %f\t %f\t%f\n", r1_vals[0],r1_vals[1],r1_vals[2],r1_vals[3]);
+      }
+#endif
+
+    // horizontal
+    sum = _mm_hadd_ps(sum,sum);    // [1+2, 3+4, 1+2, 3+4]
+#ifdef DEBUG_AMBIENT
+    if(logs<logcount)
+      {
+	_mm_storeu_ps(r1_vals, sum);
+	printf("hadd2:\t%f\t %f\t %f\t%f\n", r1_vals[0],r1_vals[1],r1_vals[2],r1_vals[3]);
+      }
+#endif    
+ 
+    intensity +=  _mm_cvtss_f32(sum);
+  }
+
+#ifdef DEBUG_AMBIENT
+  if(logs<logcount)
+    {
+      printf("%f\n",intensity);
+      logs++;
+    }
+#endif
   
 
   for( int i =0; i< lightCount; i++){
     Light* l = lights+i;
 
-    if (l->type == LIGHT_AMBIENT){
-      intensity += l->intensity;
-      continue;
-    }
-
+    
     float t_max;
     if ( l->type == LIGHT_POINT ){
       L = v3_sub(l->position, P);
@@ -1133,7 +1166,8 @@ void fillRegion
   // todo: 4 floats for now, but consider more
   int paddedAmbient = ((ambient +3)/4)*4;  
   lightBuffer.ambient_count = ambient;
-  lightBuffer.ambient_intensity = malloc(paddedAmbient*sizeof(float));
+  // note calloc, making sure no junk light remains
+  lightBuffer.ambient_intensity = calloc(paddedAmbient,sizeof(float));
 
   // todo: 4 floats for now, but consider more
   int paddedPoint = ((point +3)/4)*4;  
@@ -1246,7 +1280,7 @@ void fillRegion
   //todo: consider alligned alocations
 /* #ifdef __AVX2__ */
 /* #define SIMD_ALIGNMENT 32  // AVX2 needs 32-byte alignment */
-/* #elif __SSE__ */
+/* #elif ____ */
 /* #define SIMD_ALIGNMENT 16  // SSE needs 16-byte alignment */
 /* #else */
 /* #define SIMD_ALIGNMENT 8   // Default */
