@@ -426,7 +426,7 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 
   RaySphereIntersection result = {0};
  
-  for ( int sphereBatchOffset = 0; sphereBatchOffset < sphereBuffer.count; sphereBatchOffset+=4 )
+  for ( size_t sphereBatchOffset = 0; sphereBatchOffset < sphereBuffer.count; sphereBatchOffset+=4 )
     {      
       tmp_x = _mm_load_ps(sphereBuffer.x+sphereBatchOffset); //load 4 floats
       tmp_y = _mm_load_ps(sphereBuffer.y+sphereBatchOffset);
@@ -710,6 +710,15 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 			   const LightBuffer lightbuffer
 			   ){
 
+  // todo: remove after batch is fully implemented
+  (void)sphereCount;
+  (void)Origin;
+  (void)t_min_2;
+  (void)t_max_2;
+  (void)Origin;
+  (void)recursion_depth_2;
+  
+
   float intensity = 0.0;
   V3 L;
   V3 Reflection;
@@ -964,6 +973,11 @@ V3 traceRayBatch(
 		   //		   ,ColorBuffer* const result
 		   ){
 
+  //todo: remove after batch is implemented
+  (void)Origin;
+  (void)batchSize;
+  (void)recursion_depth_2;
+  
   float closest_t = BIG_NUMBER;
   const Sphere *closestSphere = NULL;
 
