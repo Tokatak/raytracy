@@ -356,7 +356,6 @@ RaySphereIntersection intersectRaySphereClosest(const V3 O, const V3 D, const fl
 						const float t_max,const  Sphere* restrict spheres,
 						const int sphereCount);
 
-// todo: dont like signature
 RaySphereIntersection intersectRaySphereBatched(const V3 O,
 						const DirectionBuffer directionBuffer,
 						const size_t startAt,
@@ -727,9 +726,9 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
   float View_len = v3_len(View);
 
   // todo: handle allocation
-  float x_buffer[1];
-  float y_buffer[1];
-  float z_buffer[1];
+  float x_buffer[4];
+  float y_buffer[4];
+  float z_buffer[4];
   DirectionBuffer lightDirectionBuffer ={0};
   lightDirectionBuffer.count = 1;
   lightDirectionBuffer.x = x_buffer;
@@ -789,18 +788,75 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 
 
 
-  // todo: continue here
- light_buffer;
-  for ( size_t light_offset =0; light_offset< lightbuffer.ambient_count; light_offset+=4){
-    light_buffer = _mm_load_ps(lightbuffer.ambient_intensity + light_offset);
+  /* // POINT */
+  /* __m128 Px = _mm_set1_ps(P.x); */
+  /* __m128 Py = _mm_set1_ps(P.y); */
+  /* __m128 Pz = _mm_set1_ps(P.z); */
+  /* //  __m128 tmp; */
+  /* __m128 lx,ly,lz; */
+  /* for ( size_t light_offset =0; light_offset< lightbuffer.point_count; light_offset+=4){ */
+  /*   light_buffer = _mm_load_ps(lightbuffer.point_intensity + light_offset); */
+
+  /*   lx = _mm_load_ps(lightbuffer.point_x + light_offset); */
+  /*   ly = _mm_load_ps(lightbuffer.point_y + light_offset); */
+  /*   lz = _mm_load_ps(lightbuffer.point_z + light_offset); */
+
+  /*   // todo consider increasing */
+  /*   // lightDirectionBuffer.count = 1; */
+
+  /*   //L = v3_sub(l->position, P); */
+  /*   lx = _mm_sub_ps(lx, Px); */
+  /*   ly = _mm_sub_ps(ly, Py); */
+  /*   lz = _mm_sub_ps(lz, Pz); */
+
+  /*   t_max = 1; */
+
+  /*   _mm_storeu_ps(x_buffer, lx); */
+  /*   _mm_storeu_ps(y_buffer, ly); */
+  /*   _mm_storeu_ps(z_buffer, lz);	   */
+  /*   /\* x_buffer[0] = L.x; *\/ */
+  /*   /\* y_buffer[0] = L.y; *\/ */
+  /*   /\* z_buffer[0] = L.z; *\/ */
     
-  }
+  /*   RaySphereIntersection intersection = intersectRaySphereBatched(P, */
+  /* 								   lightDirectionBuffer, */
+  /* 								   0,//startAt, */
+  /* 								   sphereBuffer, */
+  /* 								   EPSILON,  t_max, */
+  /* 								   spheres); */
+    
+  /*   if( intersection.sphere != NULL ){ */
+  /*     continue; */
+  /*   } */
+  /// todo: consider here - dot
+
+  /*   // DIFFUSE */
+  /*   float nDotl = v3_dot( N, L); */
+  /*   if ( nDotl > 0 ){ */
+  /*     intensity += l->intensity * nDotl / (N_len * v3_len(L)) ; */
+  /*   } */
+
+  /*   // SPECULAR */
+  /*   if ( s != -1){ */
+  /*     ReflectRay(N,L,&Reflection); */
+      
+  /*     float rDotV = v3_dot( Reflection, View); */
+  /*     if (rDotV >0){ */
+  /* 	intensity += l->intensity * powf( rDotV / (v3_len(Reflection) * View_len), s ); */
+  /*     } */
+  /*   } */
+    
+  /* } */
+  
   
 
   for( int i =0; i< lightCount; i++)
     {
       Light* l = lights+i;
 
+      /* // todo: remove debug */
+      /* if ( l->type == LIGHT_POINT ) */
+      /* 	continue; */
     
       float t_max;
       if ( l->type == LIGHT_POINT ){
