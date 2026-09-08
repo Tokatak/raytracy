@@ -830,7 +830,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
   /* 								   0,//startAt, */
   /* 								   sphereBuffer, */
   /* 								   EPSILON,  t_max, */
-  /* 								   spheres); */
+  /* 		 						   spheres); */
     
   /*   if( intersection.sphere != NULL ){ */
   /*     continue; */
