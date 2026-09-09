@@ -789,93 +789,122 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 
 
   /* // POINT */
-  /* __m128 Px = _mm_set1_ps(P.x); */
-  /* __m128 Py = _mm_set1_ps(P.y); */
-  /* __m128 Pz = _mm_set1_ps(P.z); */
-  /* __m128 tmp; */
-  /* __m128 Lx,Ly,Lz; */
+  __m128 Px = _mm_set1_ps(P.x);
+  __m128 Py = _mm_set1_ps(P.y);
+  __m128 Pz = _mm_set1_ps(P.z);
+  __m128 N_len_batch = _mm_set1_ps(N_len);
+  __m128 L_len_batch ;
+  __m128 Lx,Ly,Lz;
   
-  /* __m128 Nx = _mm_set1_ps(N.x); */
-  /* __m128 Ny = _mm_set1_ps(N.y); */
-  /* __m128 Nz = _mm_set1_ps(N.z); */
+  __m128 Nx = _mm_set1_ps(N.x);
+  __m128 Ny = _mm_set1_ps(N.y);
+  __m128 Nz = _mm_set1_ps(N.z);
 
-  /* __m128 zero = _mm_setzero_ps(); */
-  /* float t_max = 1; */
-  /* for ( size_t light_offset =0; light_offset< lightbuffer.point_count; light_offset+=4){ */
-  /*   light_buffer = _mm_load_ps(lightbuffer.point_intensity + light_offset); */
+  __m128 zero = _mm_setzero_ps();
+  float t_max = 1;
+  for ( size_t light_offset =0; light_offset< lightbuffer.point_count; light_offset+=4){
+    light_buffer = _mm_load_ps(lightbuffer.point_intensity + light_offset);
 
-  /*   Lx = _mm_load_ps(lightbuffer.point_x + light_offset); */
-  /*   Ly = _mm_load_ps(lightbuffer.point_y + light_offset); */
-  /*   Lz = _mm_load_ps(lightbuffer.point_z + light_offset); */
+    Lx = _mm_load_ps(lightbuffer.point_x + light_offset);
+    Ly = _mm_load_ps(lightbuffer.point_y + light_offset);
+    Lz = _mm_load_ps(lightbuffer.point_z + light_offset);
 
-  /*   // todo consider increasing */
-  /*   // lightDirectionBuffer.count = 1; */
+    // todo consider increasing
+    // lightDirectionBuffer.count = 1;
 
-  /*   //L = v3_sub(l->position, P); */
-  /*   Lx = _mm_sub_ps(Lx, Px); */
-  /*   Ly = _mm_sub_ps(Ly, Py); */
-  /*   Lz = _mm_sub_ps(Lz, Pz); */
+    //L = v3_sub(l->position, P);
+    Lx = _mm_sub_ps(Lx, Px);
+    Ly = _mm_sub_ps(Ly, Py);
+    Lz = _mm_sub_ps(Lz, Pz);
 
-
-
-  /*   _mm_storeu_ps(x_buffer, Lx); */
-  /*   _mm_storeu_ps(y_buffer, Ly); */
-  /*   _mm_storeu_ps(z_buffer, Lz); */
-  /*   /\* x_buffer[0] = L.x; *\/ */
-  /*   /\* y_buffer[0] = L.y; *\/ */
-  /*   /\* z_buffer[0] = L.z; *\/ */
-    
-  /*   RaySphereIntersection intersection = intersectRaySphereBatched(P, */
-  /* 								   lightDirectionBuffer, */
-  /* 								   0,//startAt, */
-  /* 								   sphereBuffer, */
-  /* 								   EPSILON,  t_max, */
-  /* 		 						   spheres); */
-    
-  /*   if( intersection.sphere != NULL ){ */
-  /*     continue; */
-  /*   } */
-  /*   //  todo: consider here - dot */
-
-  /*   /\* // DIFFUSE *\/ */
-  /*   //DOT between Normal and Light */
-  /*   tmp = */
-  /*     _mm_add_ps( */
-  /* 		 _mm_add_ps( */
-  /* 			    _mm_mul_ps(Nx,Lx), */
-  /* 			    _mm_mul_ps(Ny,Ly)), */
-  /* 		 _mm_mul_ps(Nz,Lz)); */
-
-  /*   __m128 positive = _mm_max_ps(, zero); */
+    _mm_storeu_ps(x_buffer, Lx);
+    _mm_storeu_ps(y_buffer, Ly);
+    _mm_storeu_ps(z_buffer, Lz);
+    /* x_buffer[0] = L.x; */
+    /* y_buffer[0] = L.y; */
+    /* z_buffer[0] = L.z; */
 
     
-  /*   /\* float nDotl = v3_dot( N, L); *\/ */
-  /*   /\* if ( nDotl > 0 ){ *\/ */
-  /*   /\*   intensity += l->intensity * nDotl / (N_len * v3_len(L)) ; *\/ */
-  /*   /\* } *\/ */
+    RaySphereIntersection intersection = intersectRaySphereBatched(P,
+								   lightDirectionBuffer,
+								   0,//startAt,
+								   sphereBuffer,
+								   EPSILON,  t_max,
+		 						   spheres);
+    
+    if( intersection.sphere != NULL ){
+      continue;
+    }
+    //  todo: consider here - dot
+
+    /* // DIFFUSE */
+    //DOT between Normal and Light
+    // tmp = Nx*Lx + Ny*Ly + Nz*Lz;
+    __m128 dot =
+      _mm_add_ps(
+		 _mm_add_ps(
+			    _mm_mul_ps(Nx,Lx),
+			    _mm_mul_ps(Ny,Ly)),
+		 _mm_mul_ps(Nz,Lz));
+
+    // positive tmp > 0 or 0
+    __m128 positive_dot = _mm_max_ps(dot, zero);
+
+    // need
+    // N_len, len for L
+    //
+
+    L_len_batch =
+      _mm_sqrt_ps(
+		  _mm_add_ps(
+			     _mm_add_ps(
+					_mm_mul_ps(Lx,Lx),
+					_mm_mul_ps(Ly,Ly)),
+			     _mm_mul_ps(Lz,Lz)));
+
+    __m128 denom = _mm_mul_ps(N_len_batch, L_len_batch);
+
+    // Add small epsilon to avoid division by zero
+    __m128 epsilon = _mm_set1_ps(1e-6f);
+    denom = _mm_max_ps(denom, epsilon);  // Ensure denom >= epsilon
 
 
-  /*   /\* // SPECULAR *\/ */
-  /*   /\* if ( s != -1){ *\/ */
-  /*   /\*   ReflectRay(N,L,&Reflection); *\/ */
+    
+
+    
+    __m128 intensity_batch = _mm_div_ps(
+				       _mm_mul_ps(light_buffer, positive_dot),
+				       denom
+				       );
+
+
+    __m128 sum = _mm_hadd_ps(intensity_batch, intensity_batch);
+    sum = _mm_hadd_ps(sum, sum);
+    intensity += _mm_cvtss_f32(sum);
+    
+    /* float nDotl = v3_dot( N, L); */
+    /* if ( nDotl > 0 ){ */
+    /*   intensity += l->intensity * nDotl / (N_len * v3_len(L)) ; */
+    /* } */
+
+
+    /* // SPECULAR */
+    /* if ( s != -1){ */
+    /*   ReflectRay(N,L,&Reflection); */
       
-  /*   /\*   float rDotV = v3_dot( Reflection, View); *\/ */
-  /*   /\*   if (rDotV >0){ *\/ */
-  /*   /\* 	intensity += l->intensity * powf( rDotV / (v3_len(Reflection) * View_len), s ); *\/ */
-  /*   /\*   } *\/ */
-  /*   /\* } *\/ */
+    /*   float rDotV = v3_dot( Reflection, View); */
+    /*   if (rDotV >0){ */
+    /* 	intensity += l->intensity * powf( rDotV / (v3_len(Reflection) * View_len), s ); */
+    /*   } */
+    /* } */
     
-  /* } */
+  }
   
   
 
   for( int i =0; i< lightCount; i++)
     {
       Light* l = lights+i;
-
-      /* // todo: remove debug */
-      /* if ( l->type == LIGHT_POINT ) */
-      /* 	continue; */
     
       float t_max;
       if ( l->type == LIGHT_POINT ){
@@ -904,11 +933,15 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 	continue;
       }
 
-      // DIFFUSE
-      float nDotl = v3_dot( N, L);
-      if ( nDotl > 0 ){
-	intensity += l->intensity * nDotl / (N_len * v3_len(L)) ;
-      }
+        // todo: remove debug
+      if ( l->type != LIGHT_POINT )
+	{
+	  // DIFFUSE
+	  float nDotl = v3_dot( N, L);
+	  if ( nDotl > 0 ){
+	    intensity += l->intensity * nDotl / (N_len * v3_len(L)) ;
+	  }
+	}
 
       // SPECULAR
       if ( s != -1){
@@ -1268,9 +1301,13 @@ void fillRegion
   // todo: 4 floats for now, but consider more
   int paddedPoint = ((point +3)/4)*4;  
   lightBuffer.point_count = point;
-  lightBuffer.point_x = malloc(paddedPoint*sizeof(float));
-  lightBuffer.point_y = malloc(paddedPoint*sizeof(float));
-  lightBuffer.point_z = malloc(paddedPoint*sizeof(float));
+
+  // note calloc, junk in positions lead to infinity in dot
+  // and 0*inifnity as a intensity
+  lightBuffer.point_x = calloc(paddedPoint, sizeof(float));
+  lightBuffer.point_y = calloc(paddedPoint, sizeof(float));
+  lightBuffer.point_z = calloc(paddedPoint, sizeof(float));
+  
   // note calloc, making sure no junk light remains
   lightBuffer.point_intensity = calloc(paddedPoint,sizeof(float));
 
