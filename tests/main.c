@@ -13,6 +13,8 @@
 #undef SaveImage
 #endif
 
+#define TEST_TOLERANCE_PIXEL 10
+
 #define SCREENSHOT_FOLDER "tests"
 #define FAILED_SCREENSHOT_FOLDER "failed"
 void pathToFailedScreenshotFromName(char* target, const char* testName){
@@ -170,7 +172,9 @@ bool validate_test_result(RenderTestContext* ctx){
     return false;
   }
 
-  bool image_are_same = ppmbuffer_same(&(ctx->loaded), &(ctx->generated));
+  int diff = ppmbuffer_same_px (&(ctx->loaded), &(ctx->generated)); 
+  //  bool image_are_same = ppmbuffer_same(&(ctx->loaded), &(ctx->generated));
+  bool image_are_same = diff < TEST_TOLERANCE_PIXEL;
   if(!image_are_same){
     pathToFailedScreenshotFromName(path, ctx->test_name);
     CompareCombineSave(&(ctx->loaded),

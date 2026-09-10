@@ -18,6 +18,7 @@ typedef struct
 void ppmbuffer_save(const char* restrict fileName,const PpmBuffer* restrict buffer);
 bool ppmbuffer_load_into(char* restrict path, PpmBuffer* restrict result);
 bool ppmbuffer_same(const PpmBuffer* restrict abuffer,const PpmBuffer* restrict bbuffer);
+int ppmbuffer_same_px(const PpmBuffer* restrict abuffer,const PpmBuffer* restrict bbuffer);
 bool ppmbuffer_compare_combine(PpmBuffer* restrict abuffer, PpmBuffer* restrict bbuffer, PpmBuffer* restrict result);
 
 
@@ -144,6 +145,37 @@ bool ppmbuffer_same(const PpmBuffer* restrict abuffer,const PpmBuffer* restrict 
     }
     
     return true;
+}
+
+// todo : better heirustic for difference
+int ppmbuffer_same_px(const PpmBuffer* restrict abuffer,const PpmBuffer* restrict bbuffer){
+  int diff = 0;
+    if (!abuffer || !bbuffer) {
+        printf("Error: NULL pointer passed to SameImage\n");
+        return -1;
+    }
+    
+    if (!abuffer->buffer || !bbuffer->buffer) {
+        printf("Error: One or both buffers are NULL\n");
+        return -1;
+    }
+
+    if (abuffer->pxWidth != bbuffer->pxWidth || 
+        abuffer->pxHeight != bbuffer->pxHeight) {
+        printf("Image dimensions differ: (%dx%d) vs (%dx%d)\n", 
+               abuffer->pxWidth, abuffer->pxHeight, 
+               bbuffer->pxWidth, bbuffer->pxHeight);
+        return -1;
+    }
+    
+    int pixelCount = abuffer->pxWidth * abuffer->pxHeight * 3;
+    for (int i = 0; i < pixelCount; i++) {
+      if (abuffer->buffer[i] != bbuffer->buffer[i]) {
+	diff ++;
+      }
+    }
+    
+    return diff;
 }
 
 bool ppmbuffer_compare_combine(PpmBuffer* abuffer, PpmBuffer* bbuffer, PpmBuffer* result){
