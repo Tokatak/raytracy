@@ -833,6 +833,8 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
   __m128 Nz = _mm_set1_ps(N.z);
 
   __m128 zero = _mm_setzero_ps();
+
+  __m128 specular = _mm_set1_ps(s);
   float t_max = 1;
   for ( size_t light_offset =0; light_offset< lightbuffer.point_count; light_offset+=4){
     light_buffer = _mm_load_ps(lightbuffer.point_intensity + light_offset);
@@ -852,10 +854,6 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     _mm_storeu_ps(x_buffer, Lx);
     _mm_storeu_ps(y_buffer, Ly);
     _mm_storeu_ps(z_buffer, Lz);
-    /* x_buffer[0] = L.x; */
-    /* y_buffer[0] = L.y; */
-    /* z_buffer[0] = L.z; */
-
     
     RaySphereIntersection intersection = intersectRaySphereBatched(P,
 								   lightDirectionBuffer,
@@ -863,15 +861,15 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 								   sphereBuffer,
 								   EPSILON,  t_max,
 		 						   spheres);
-    
     if( intersection.sphere != NULL ){
       continue;
     }
-    //  todo: consider here - dot
 
-    /* // DIFFUSE */
-    //DOT between Normal and Light
-    // tmp = Nx*Lx + Ny*Ly + Nz*Lz;
+    /* // DIFFUSE */        
+    /* float nDotl = v3_dot( N, L); */
+    /* if ( nDotl > 0 ){ */
+    /*   intensity += l->intensity * nDotl / (N_len * v3_len(L)) ; */
+    /* } */
     __m128 dot =
       _mm_add_ps(
 		 _mm_add_ps(
@@ -881,10 +879,6 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 
     // positive tmp > 0 or 0
     __m128 positive_dot = _mm_max_ps(dot, zero);
-
-    // need
-    // N_len, len for L
-    //
 
     L_len_batch =
       _mm_sqrt_ps(
@@ -900,26 +894,30 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     __m128 epsilon = _mm_set1_ps(1e-6f);
     denom = _mm_max_ps(denom, epsilon);  // Ensure denom >= epsilon
 
-
-    
-
-    
     __m128 intensity_batch = _mm_div_ps(
 				       _mm_mul_ps(light_buffer, positive_dot),
 				       denom
 				       );
-
-
     __m128 sum = _mm_hadd_ps(intensity_batch, intensity_batch);
     sum = _mm_hadd_ps(sum, sum);
     intensity += _mm_cvtss_f32(sum);
     
-    /* float nDotl = v3_dot( N, L); */
-    /* if ( nDotl > 0 ){ */
-    /*   intensity += l->intensity * nDotl / (N_len * v3_len(L)) ; */
+
+    // continue here
+    /* // todo: check if possible to test against several spheres, */
+    /* // this would update this line */
+    /* if ( s!= -1) { */
+    /*     /\* ReflectRay(N,L,&Reflection); *\/ */
+    /* 	static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){ */
+    /* 	  const float twoNDotl = 2*v3_dot(R,N); */
+    /* 	  result->x = twoNDotl*N.x-R.x; */
+    /* 	  result->y = twoNDotl*N.y-R.y; */
+    /* 	  result->z = twoNDotl*N.z-R.z; */
+    /* 	} */
+    /* 	__m128 twoNdotlx =  */
     /* } */
 
-
+    
     /* // SPECULAR */
     /* if ( s != -1){ */
     /*   ReflectRay(N,L,&Reflection); */
@@ -937,6 +935,9 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
   for( int i =0; i< lightCount; i++)
     {
       Light* l = lights+i;
+
+      /* if ( l->type == LIGHT_POINT ) */
+      /* 	continue; */
     
       float t_max;
       if ( l->type == LIGHT_POINT ){
@@ -947,9 +948,6 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 	t_max = BIG_NUMBER;
       }
 
-      /* RaySphereIntersection intersection = */
-      /*   intersectRaySphereClosest(P, L, EPSILON, t_max, spheres, sphereCount); */
-
       x_buffer[0] = L.x;
       y_buffer[0] = L.y;
       z_buffer[0] = L.z;
@@ -959,21 +957,20 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 								     0,//startAt,
 								     sphereBuffer,
 								     EPSILON,  t_max,
-								     spheres);
-    
+								     spheres);    
       if( intersection.sphere != NULL ){
 	continue;
       }
 
-        // todo: remove debug
-      if ( l->type != LIGHT_POINT )
-	{
-	  // DIFFUSE
-	  float nDotl = v3_dot( N, L);
-	  if ( nDotl > 0 ){
-	    intensity += l->intensity * nDotl / (N_len * v3_len(L)) ;
-	  }
+
+      // diffuse for point is batch eveluated 
+      if ( l->type != LIGHT_POINT ){ 
+	// DIFFUSE
+	float nDotl = v3_dot( N, L);
+	if ( nDotl > 0 ){
+	  intensity += l->intensity * nDotl / (N_len * v3_len(L)) ;
 	}
+      }
 
       // SPECULAR
       if ( s != -1){
