@@ -908,17 +908,25 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     /* // this would update this line */
     /* if ( s!= -1) { */
     /*     /\* ReflectRay(N,L,&Reflection); *\/ */
-    /* 	static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){ */
-    /* 	  const float twoNDotl = 2*v3_dot(R,N); */
-    /* 	  result->x = twoNDotl*N.x-R.x; */
-    /* 	  result->y = twoNDotl*N.y-R.y; */
-    /* 	  result->z = twoNDotl*N.z-R.z; */
-    /* 	} */
-    /* 	__m128 twoNdotlx =  */
+    /* 	/\* static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){ *\/ */
+    /* 	/\*   const float twoNDotl = 2*v3_dot(R,N); *\/ */
+    /* 	/\*   result->x = twoNDotl*N.x-R.x; *\/ */
+    /* 	/\*   result->y = twoNDotl*N.y-R.y; *\/ */
+    /* 	/\*   result->z = twoNDotl*N.z-R.z; *\/ */
+    /* 	/\* } *\/ */
+    /*   // todo: m128 dot */
+    /*   __m128 twoNdotlX = _mm_mul_ps(Nx, Lx); */
+    /*   __m128 twoNdotlY = _mm_mul_ps(Ny, Ly); */
+    /*   __m128 twoNdotlZ = _mm_mul_ps(Nz, Lz); */
+    /*   __m128 twoNdot = _mm_add_ps(twoNdotlX, twoNdotlY); */
+    /*   twoNdot = _mm_add_ps(twoNdot, twoNdotlZ); */
+    /*   twoNdot = _mm_mul_ps(twoNdot, _mm_set1_ps(2.0)); */
+	  
+	  
     /* } */
 
     
-    /* // SPECULAR */
+    // SPECULAR
     /* if ( s != -1){ */
     /*   ReflectRay(N,L,&Reflection); */
       
