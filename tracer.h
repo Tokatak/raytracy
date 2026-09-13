@@ -903,7 +903,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     intensity += _mm_cvtss_f32(sum);
     
 
-    // continue here
+    // continue here 
     /* // todo: check if possible to test against several spheres, */
     /* // this would update this line */
     /* if ( s!= -1) { */
