@@ -252,6 +252,27 @@ bool ppmbuffer_compare_combine(PpmBuffer* abuffer, PpmBuffer* bbuffer, PpmBuffer
 
 #endif
 
+//todo: consider prettify
+#ifndef m128V3
+#define m128V3
+
+// todo: better guard
+#include <immintrin.h>
+
+
+static inline
+__m128 m128_dot( const __m128 ax, const __m128 ay, const __m128 az,
+	       const __m128 bx, const __m128 by, const __m128 bz)
+{
+  //  return a.x*b.x + a.y*b.y + a.z*b.z;
+  return _mm_add_ps( _mm_add_ps( _mm_mul_ps(ax, bx),
+				 _mm_mul_ps(ay, by)),
+		     _mm_mul_ps(az, bz));
+}
+
+#endif
+
+
 #ifndef V3_H
 #define V3_H
 
@@ -363,9 +384,6 @@ typedef struct{
 #define RAY_H
 
 #include <stddef.h>
-
-// todo: better guard
-#include <immintrin.h>
 
 typedef struct{
   V3 position;
@@ -756,6 +774,10 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 
   float N_len = v3_len(N);
   float View_len = v3_len(View);
+  
+  __m128 Vx = _mm_set1_ps(View.x);
+  __m128 Vy = _mm_set1_ps(View.y);
+  __m128 Vz = _mm_set1_ps(View.z);
 
   // todo: handle allocation
   float x_buffer[4];
@@ -922,7 +944,21 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     /*   twoNdot = _mm_add_ps(twoNdot, twoNdotlZ); */
     /*   twoNdot = _mm_mul_ps(twoNdot, _mm_set1_ps(2.0)); */
 	  
-	  
+    /*   __m128 reflectedX = _mm_mul_ps(twoNdot,Nx); */
+    /*   reflectedX = _mm_sub_ps(reflectedX,Lx); */
+      
+    /*   __m128 reflectedY = _mm_mul_ps(twoNdot,Ny); */
+    /*   reflectedY = _mm_sub_ps(reflectedY,Ly); */
+      
+    /*   __m128 reflectedZ = _mm_mul_ps(twoNdot,Nz); */
+    /*   reflectedZ = _mm_sub_ps(reflectedZ,Lz); */
+
+    /*   /\*float rDotV = v3_dot( Reflection, View); *\/ */
+    /*   //Vx,Vy,vz */
+    /*   //todo: update all to m128_dot */
+    /*   __m128 rdotM128 = m128_dot(reflectedX, reflectedY, reflectedY, */
+    /* 				Vx,Vy,Vz); */
+    /*   __m128 rdotM128positive = _mm_max_ps(rdotM128, zero); */
     /* } */
 
     
