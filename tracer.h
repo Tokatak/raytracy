@@ -270,6 +270,23 @@ __m128 m128_dot( const __m128 ax, const __m128 ay, const __m128 az,
 		     _mm_mul_ps(az, bz));
 }
 
+static inline
+__m128 m128_len( const __m128 ax, const __m128 ay, const __m128 az)
+{
+ __m128 sum = _mm_add_ps( _mm_add_ps( _mm_mul_ps(ax, ax),
+				 _mm_mul_ps(ay, ay)),
+		     _mm_mul_ps(az, az));
+  return _mm_sqrt_ps(sum);
+}
+
+static inline
+float m128_reduce( const __m128 a, const __m128 b)
+{
+    __m128 sum = _mm_hadd_ps(a, b);
+    sum = _mm_hadd_ps(sum, sum);
+    return _mm_cvtss_f32( sum);
+}
+
 #endif
 
 
@@ -953,16 +970,21 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     /*   __m128 reflectedZ = _mm_mul_ps(twoNdot,Nz); */
     /*   reflectedZ = _mm_sub_ps(reflectedZ,Lz); */
 
+
     /*   /\*float rDotV = v3_dot( Reflection, View); *\/ */
     /*   //Vx,Vy,vz */
     /*   //todo: update all to m128_dot */
     /*   __m128 rdotM128 = m128_dot(reflectedX, reflectedY, reflectedY, */
     /* 				Vx,Vy,Vz); */
     /*   __m128 rdotM128positive = _mm_max_ps(rdotM128, zero); */
+
+    /*   __m128 denom = _mm_mul_ps( m128_len( reflectedX, reflectedY, reflectedZ), */
+    /* 				 m128_len(Lx,Ly,Lz)); */
+      
     /* } */
 
     
-    // SPECULAR
+    /* SPECULAR */
     /* if ( s != -1){ */
     /*   ReflectRay(N,L,&Reflection); */
       
