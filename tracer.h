@@ -875,6 +875,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 
   __m128 specular = _mm_set1_ps(s);
   float t_max = 1;
+  float tmp_floats[4];
   for ( size_t light_offset =0; light_offset< lightbuffer.point_count; light_offset+=4){
     light_buffer = _mm_load_ps(lightbuffer.point_intensity + light_offset);
 
@@ -942,9 +943,9 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     intensity += _mm_cvtss_f32(sum);
     
 
-    // continue here 
-    /* // todo: check if possible to test against several spheres, */
-    /* // this would update this line */
+    /* // continue here  */
+    /* /\* // todo: check if possible to test against several spheres, *\/ */
+    /* /\* // this would update this line *\/ */
     /* if ( s!= -1) { */
     /*     /\* ReflectRay(N,L,&Reflection); *\/ */
     /* 	/\* static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){ *\/ */
@@ -974,23 +975,26 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     /*   /\*float rDotV = v3_dot( Reflection, View); *\/ */
     /*   //Vx,Vy,vz */
     /*   //todo: update all to m128_dot */
-    /*   __m128 rdotM128 = m128_dot(reflectedX, reflectedY, reflectedY, */
+    /*   __m128 rdotM128 = m128_dot(reflectedX, reflectedY, reflectedZ, */
     /* 				Vx,Vy,Vz); */
     /*   __m128 rdotM128positive = _mm_max_ps(rdotM128, zero); */
 
     /*   __m128 denom = _mm_mul_ps( m128_len( reflectedX, reflectedY, reflectedZ), */
-    /* 				 m128_len(Lx,Ly,Lz)); */
-      
-    /* } */
+    /* 				 m128_len(Vx,Vy,Vz)); */
 
-    
-    /* SPECULAR */
-    /* if ( s != -1){ */
-    /*   ReflectRay(N,L,&Reflection); */
-      
-    /*   float rDotV = v3_dot( Reflection, View); */
-    /*   if (rDotV >0){ */
-    /* 	intensity += l->intensity * powf( rDotV / (v3_len(Reflection) * View_len), s ); */
+    /*   // Add small epsilon to avoid division by zero */
+    /*   __m128 epsilon = _mm_set1_ps(1e-6f); */
+    /*   denom = _mm_max_ps(denom, epsilon);  // Ensure denom >= epsilon */
+
+    /*   __m128 intensity_batch = _mm_div_ps( */
+    /* 					  rdotM128positive, */
+    /* 					  denom */
+    /* 					  ); */
+
+    /*   _mm_storeu_ps(tmp_floats, intensity_batch); */
+
+    /*   for( int i =0; i< 4; i++){ */
+    /* 	intensity += (lightbuffer.point_intensity + light_offset +i) * powf(tmp_floats[i]); */
     /*   } */
     /* } */
     
