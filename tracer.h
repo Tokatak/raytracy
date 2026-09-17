@@ -873,7 +873,6 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 
   __m128 zero = _mm_setzero_ps();
 
-  __m128 specular = _mm_set1_ps(s);
   float t_max = 1;
   float tmp_floats[4];
   for ( size_t light_offset =0; light_offset< lightbuffer.point_count; light_offset+=4){
@@ -946,58 +945,57 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     /* // continue here  */
     /* /\* // todo: check if possible to test against several spheres, *\/ */
     /* /\* // this would update this line *\/ */
-    /* if ( s!= -1) { */
-    /*     /\* ReflectRay(N,L,&Reflection); *\/ */
-    /* 	/\* static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){ *\/ */
-    /* 	/\*   const float twoNDotl = 2*v3_dot(R,N); *\/ */
-    /* 	/\*   result->x = twoNDotl*N.x-R.x; *\/ */
-    /* 	/\*   result->y = twoNDotl*N.y-R.y; *\/ */
-    /* 	/\*   result->z = twoNDotl*N.z-R.z; *\/ */
-    /* 	/\* } *\/ */
-    /*   // todo: m128 dot */
-    /*   __m128 twoNdotlX = _mm_mul_ps(Nx, Lx); */
-    /*   __m128 twoNdotlY = _mm_mul_ps(Ny, Ly); */
-    /*   __m128 twoNdotlZ = _mm_mul_ps(Nz, Lz); */
-    /*   __m128 twoNdot = _mm_add_ps(twoNdotlX, twoNdotlY); */
-    /*   twoNdot = _mm_add_ps(twoNdot, twoNdotlZ); */
-    /*   twoNdot = _mm_mul_ps(twoNdot, _mm_set1_ps(2.0)); */
+    if ( s!= -1) {
+        /* ReflectRay(N,L,&Reflection); */
+	/* static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){ */
+	/*   const float twoNDotl = 2*v3_dot(R,N); */
+	/*   result->x = twoNDotl*N.x-R.x; */
+	/*   result->y = twoNDotl*N.y-R.y; */
+	/*   result->z = twoNDotl*N.z-R.z; */
+	/* } */
+      // todo: m128 dot
+      __m128 twoNdotlX = _mm_mul_ps(Nx, Lx);
+      __m128 twoNdotlY = _mm_mul_ps(Ny, Ly);
+      __m128 twoNdotlZ = _mm_mul_ps(Nz, Lz);
+      __m128 twoNdot = _mm_add_ps(twoNdotlX, twoNdotlY);
+      twoNdot = _mm_add_ps(twoNdot, twoNdotlZ);
+      twoNdot = _mm_mul_ps(twoNdot, _mm_set1_ps(2.0));
 	  
-    /*   __m128 reflectedX = _mm_mul_ps(twoNdot,Nx); */
-    /*   reflectedX = _mm_sub_ps(reflectedX,Lx); */
+      __m128 reflectedX = _mm_mul_ps(twoNdot,Nx);
+      reflectedX = _mm_sub_ps(reflectedX,Lx);
       
-    /*   __m128 reflectedY = _mm_mul_ps(twoNdot,Ny); */
-    /*   reflectedY = _mm_sub_ps(reflectedY,Ly); */
+      __m128 reflectedY = _mm_mul_ps(twoNdot,Ny);
+      reflectedY = _mm_sub_ps(reflectedY,Ly);
       
-    /*   __m128 reflectedZ = _mm_mul_ps(twoNdot,Nz); */
-    /*   reflectedZ = _mm_sub_ps(reflectedZ,Lz); */
+      __m128 reflectedZ = _mm_mul_ps(twoNdot,Nz);
+      reflectedZ = _mm_sub_ps(reflectedZ,Lz);
 
 
-    /*   /\*float rDotV = v3_dot( Reflection, View); *\/ */
-    /*   //Vx,Vy,vz */
-    /*   //todo: update all to m128_dot */
-    /*   __m128 rdotM128 = m128_dot(reflectedX, reflectedY, reflectedZ, */
-    /* 				Vx,Vy,Vz); */
-    /*   __m128 rdotM128positive = _mm_max_ps(rdotM128, zero); */
+      /*float rDotV = v3_dot( Reflection, View); */
+      //Vx,Vy,vz
+      //todo: update all to m128_dot
+      __m128 rdotM128 = m128_dot(reflectedX, reflectedY, reflectedZ,
+				Vx,Vy,Vz);
+      __m128 rdotM128positive = _mm_max_ps(rdotM128, zero);
 
-    /*   __m128 denom = _mm_mul_ps( m128_len( reflectedX, reflectedY, reflectedZ), */
-    /* 				 m128_len(Vx,Vy,Vz)); */
+      __m128 denom = _mm_mul_ps( m128_len( reflectedX, reflectedY, reflectedZ),
+				 m128_len(Vx,Vy,Vz));
 
-    /*   // Add small epsilon to avoid division by zero */
-    /*   __m128 epsilon = _mm_set1_ps(1e-6f); */
-    /*   denom = _mm_max_ps(denom, epsilon);  // Ensure denom >= epsilon */
+      // Add small epsilon to avoid division by zero
+      __m128 epsilon = _mm_set1_ps(1e-6f);
+      denom = _mm_max_ps(denom, epsilon);  // Ensure denom >= epsilon
 
-    /*   __m128 intensity_batch = _mm_div_ps( */
-    /* 					  rdotM128positive, */
-    /* 					  denom */
-    /* 					  ); */
+      __m128 intensity_batch = _mm_div_ps(
+					  rdotM128positive,
+					  denom
+					  );
 
-    /*   _mm_storeu_ps(tmp_floats, intensity_batch); */
+      _mm_storeu_ps(tmp_floats, intensity_batch);
 
-    /*   for( int i =0; i< 4; i++){ */
-    /* 	intensity += (lightbuffer.point_intensity + light_offset +i) * powf(tmp_floats[i]); */
-    /*   } */
-    /* } */
-    
+      for( int i =0; i< 4; i++){
+		intensity += *(lightbuffer.point_intensity + light_offset + i) * powf(tmp_floats[i],s);
+      }
+    }    
   }
   
   
@@ -1006,9 +1004,9 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     {
       Light* l = lights+i;
 
-      /* if ( l->type == LIGHT_POINT ) */
-      /* 	continue; */
-    
+      if ( l->type == LIGHT_POINT )
+	continue;
+      
       float t_max;
       if ( l->type == LIGHT_POINT ){
 	L = v3_sub(l->position, P);
