@@ -1006,6 +1006,9 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 
       if ( l->type == LIGHT_POINT )
 	continue;
+
+      if ( l->type == LIGHT_AMBIENT )
+	continue;
       
       float t_max;
       if ( l->type == LIGHT_POINT ){
@@ -1326,7 +1329,6 @@ void setPixelCanvas(float x, float y, V3 color, Buffer *buffer) {
   setPixelTexture(x + (buffer->width) / 2, -(y - (buffer->height) / 2), color,
                   buffer);
 }
-
 
 
 
