@@ -786,11 +786,8 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
   
 
   float intensity = 0.0;
-  V3 L;
-  V3 Reflection;
 
   float N_len = v3_len(N);
-  float View_len = v3_len(View);
   
   __m128 Vx = _mm_set1_ps(View.x);
   __m128 Vy = _mm_set1_ps(View.y);
@@ -811,6 +808,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
   // debug
   float r1_vals[4];
 #endif
+
   
   __m128 light_buffer;
   for ( size_t light_offset =0; light_offset< lightbuffer.ambient_count; light_offset+=4){
@@ -875,7 +873,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 
   float t_max = 1;
   float tmp_floats[4];
-  for ( size_t light_offset =0; light_offset< lightbuffer.point_count; light_offset+=4){
+  for ( size_t light_offset =0; light_offset< lightbuffer.point_count ; light_offset+=4){
     light_buffer = _mm_load_ps(lightbuffer.point_intensity + light_offset);
 
     Lx = _mm_load_ps(lightbuffer.point_x + light_offset);
@@ -942,7 +940,6 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     intensity += _mm_cvtss_f32(sum);
     
 
-    /* // continue here  */
     /* /\* // todo: check if possible to test against several spheres, *\/ */
     /* /\* // this would update this line *\/ */
     if ( s!= -1) {
@@ -997,63 +994,128 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
       }
     }    
   }
-  
-  
 
-  for( int i =0; i< lightCount; i++)
-    {
-      Light* l = lights+i;
+  // LIGHT_DIRECTION
+  // SIMILAR TO POINT
+  // TODO: unite
+  t_max = BIG_NUMBER;
+    for ( size_t light_offset =0; light_offset< lightbuffer.dir_count; light_offset+=4){
+    light_buffer = _mm_load_ps(lightbuffer.dir_intensity + light_offset);
 
-      if ( l->type == LIGHT_POINT )
-	continue;
+    Lx = _mm_load_ps(lightbuffer.dir_x + light_offset);
+    Ly = _mm_load_ps(lightbuffer.dir_y + light_offset);
+    Lz = _mm_load_ps(lightbuffer.dir_z + light_offset);
 
-      if ( l->type == LIGHT_AMBIENT )
-	continue;
-      
-      float t_max;
-      if ( l->type == LIGHT_POINT ){
-	L = v3_sub(l->position, P);
-	t_max = 1;
-      } else { // DIRECTIONAL
-	L = l->position;
-	t_max = BIG_NUMBER;
-      }
+    // todo consider increasing
+    // lightDirectionBuffer.count = 1;
 
-      x_buffer[0] = L.x;
-      y_buffer[0] = L.y;
-      z_buffer[0] = L.z;
+    _mm_storeu_ps(x_buffer, Lx);
+    _mm_storeu_ps(y_buffer, Ly);
+    _mm_storeu_ps(z_buffer, Lz);
     
-      RaySphereIntersection intersection = intersectRaySphereBatched(P,
-								     lightDirectionBuffer,
-								     0,//startAt,
-								     sphereBuffer,
-								     EPSILON,  t_max,
-								     spheres);    
-      if( intersection.sphere != NULL ){
-	continue;
-      }
-
-
-      // diffuse for point is batch eveluated 
-      if ( l->type != LIGHT_POINT ){ 
-	// DIFFUSE
-	float nDotl = v3_dot( N, L);
-	if ( nDotl > 0 ){
-	  intensity += l->intensity * nDotl / (N_len * v3_len(L)) ;
-	}
-      }
-
-      // SPECULAR
-      if ( s != -1){
-	ReflectRay(N,L,&Reflection);
-      
-	float rDotV = v3_dot( Reflection, View);
-	if (rDotV >0){
-	  intensity += l->intensity * powf( rDotV / (v3_len(Reflection) * View_len), s );
-	}
-      }
-    
+    RaySphereIntersection intersection = intersectRaySphereBatched(P,
+								   lightDirectionBuffer,
+								   0,//startAt,
+								   sphereBuffer,
+								   EPSILON,  t_max,
+		 						   spheres);
+    if( intersection.sphere != NULL ){
+      continue;
     }
+
+    /* // DIFFUSE */        
+    /* float nDotl = v3_dot( N, L); */
+    /* if ( nDotl > 0 ){ */
+    /*   intensity += l->intensity * nDotl / (N_len * v3_len(L)) ; */
+    /* } */
+    __m128 dot =
+      _mm_add_ps(
+		 _mm_add_ps(
+			    _mm_mul_ps(Nx,Lx),
+			    _mm_mul_ps(Ny,Ly)),
+		 _mm_mul_ps(Nz,Lz));
+
+    // positive tmp > 0 or 0
+    __m128 positive_dot = _mm_max_ps(dot, zero);
+
+    L_len_batch =
+      _mm_sqrt_ps(
+		  _mm_add_ps(
+			     _mm_add_ps(
+					_mm_mul_ps(Lx,Lx),
+					_mm_mul_ps(Ly,Ly)),
+			     _mm_mul_ps(Lz,Lz)));
+
+    __m128 denom = _mm_mul_ps(N_len_batch, L_len_batch);
+
+    // Add small epsilon to avoid division by zero
+    __m128 epsilon = _mm_set1_ps(1e-6f);
+    denom = _mm_max_ps(denom, epsilon);  // Ensure denom >= epsilon
+
+    __m128 intensity_batch = _mm_div_ps(
+				       _mm_mul_ps(light_buffer, positive_dot),
+				       denom
+				       );
+    __m128 sum = _mm_hadd_ps(intensity_batch, intensity_batch);
+    sum = _mm_hadd_ps(sum, sum);
+    intensity += _mm_cvtss_f32(sum);
+    
+
+    /* /\* // todo: check if possible to test against several spheres, *\/ */
+    /* /\* // this would update this line *\/ */
+    if ( s!= -1) {
+        /* ReflectRay(N,L,&Reflection); */
+	/* static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){ */
+	/*   const float twoNDotl = 2*v3_dot(R,N); */
+	/*   result->x = twoNDotl*N.x-R.x; */
+	/*   result->y = twoNDotl*N.y-R.y; */
+	/*   result->z = twoNDotl*N.z-R.z; */
+	/* } */
+      // todo: m128 dot
+      __m128 twoNdotlX = _mm_mul_ps(Nx, Lx);
+      __m128 twoNdotlY = _mm_mul_ps(Ny, Ly);
+      __m128 twoNdotlZ = _mm_mul_ps(Nz, Lz);
+      __m128 twoNdot = _mm_add_ps(twoNdotlX, twoNdotlY);
+      twoNdot = _mm_add_ps(twoNdot, twoNdotlZ);
+      twoNdot = _mm_mul_ps(twoNdot, _mm_set1_ps(2.0));
+	  
+      __m128 reflectedX = _mm_mul_ps(twoNdot,Nx);
+      reflectedX = _mm_sub_ps(reflectedX,Lx);
+      
+      __m128 reflectedY = _mm_mul_ps(twoNdot,Ny);
+      reflectedY = _mm_sub_ps(reflectedY,Ly);
+      
+      __m128 reflectedZ = _mm_mul_ps(twoNdot,Nz);
+      reflectedZ = _mm_sub_ps(reflectedZ,Lz);
+
+
+      /*float rDotV = v3_dot( Reflection, View); */
+      //Vx,Vy,vz
+      //todo: update all to m128_dot
+      __m128 rdotM128 = m128_dot(reflectedX, reflectedY, reflectedZ,
+				Vx,Vy,Vz);
+      __m128 rdotM128positive = _mm_max_ps(rdotM128, zero);
+
+      __m128 denom = _mm_mul_ps( m128_len( reflectedX, reflectedY, reflectedZ),
+				 m128_len(Vx,Vy,Vz));
+
+      // Add small epsilon to avoid division by zero
+      __m128 epsilon = _mm_set1_ps(1e-6f);
+      denom = _mm_max_ps(denom, epsilon);  // Ensure denom >= epsilon
+
+      __m128 intensity_batch = _mm_div_ps(
+					  rdotM128positive,
+					  denom
+					  );
+
+      _mm_storeu_ps(tmp_floats, intensity_batch);
+
+      for( int i =0; i< 4; i++){
+	intensity += *(lightbuffer.dir_intensity + light_offset + i) * powf(tmp_floats[i],s);
+      }
+    }    
+  }
+
   return intensity;
 }
 
@@ -1413,9 +1475,14 @@ void fillRegion
   // todo: 4 floats for now, but consider more
   int paddedDir = ((dir +3)/4)*4;  
   lightBuffer.dir_count = dir;
-  lightBuffer.dir_x = malloc(paddedDir*sizeof(float));
-  lightBuffer.dir_y = malloc(paddedDir*sizeof(float));
-  lightBuffer.dir_z = malloc(paddedDir*sizeof(float));
+  // note calloc, junk in positions lead to infinity in dot
+  // and 0*inifnity as a intensity
+  lightBuffer.dir_x = calloc(paddedDir, sizeof(float));
+    //malloc(paddedDir*sizeof(float));
+  lightBuffer.dir_y = calloc(paddedDir, sizeof(float));
+    //malloc(paddedDir*sizeof(float));
+  lightBuffer.dir_z = calloc(paddedDir, sizeof(float));
+    //malloc(paddedDir*sizeof(float));
   // note calloc, making sure no junk light remains
   lightBuffer.dir_intensity = calloc(paddedDir,sizeof(float));
 
