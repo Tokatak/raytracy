@@ -721,13 +721,8 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
 		      Light* lights, int lightCount);
 
 float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
-			   const Sphere* spheres, int sphereCount,
-			   Light* lights, int lightCount,
-			   
-			   const V3 Origin,
-			   //	   const DirectionBuffer directionBuffer,
-			   //			   const size_t startAt,const size_t batchSize,
-			   const float t_min_2,const float t_max_2,const int recursion_depth_2,
+			   const Sphere* spheres,
+			   // const float t_min_2,const float t_max_2,const int recursion_depth_2,
 			   const SphereBuffer sphereBuffer,
 			   const LightBuffer lightbuffer
 			   );
@@ -745,7 +740,7 @@ V3 traceRayBatch(
 		   const V3 Origin,
 		   const DirectionBuffer directionBuffer,
 		   const size_t startAt,const size_t batchSize,
-		   const float t_min_2,const float t_max_2,const int recursion_depth_2,
+		   const int recursion_depth_2,
 		   const SphereBuffer sphereBuffer,
 		   const LightBuffer lightbuffer
 		   //,ColorBuffer* const result
@@ -765,25 +760,11 @@ int logcount = 10;
 int logs = 0;
 
 float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
-			   const Sphere* spheres, int sphereCount,
-			   Light* lights, int lightCount,
-			   
-			   const V3 Origin,
-			   //			   const DirectionBuffer directionBuffer,
-			   //			   const size_t startAt,const size_t batchSize,
-			   const float t_min_2,const float t_max_2,const int recursion_depth_2,
+			   const Sphere* spheres,
+			   // const float t_min_2,const float t_max_2,const int recursion_depth_2,
 			   const SphereBuffer sphereBuffer,
 			   const LightBuffer lightbuffer
 			   ){
-
-  // todo: remove after batch is fully implemented
-  (void)sphereCount;
-  (void)Origin;
-  (void)t_min_2;
-  (void)t_max_2;
-  (void)Origin;
-  (void)recursion_depth_2;
-  
 
   float intensity = 0.0;
 
@@ -1242,8 +1223,7 @@ V3 traceRayBatch(
 
 		   // todo: propper handling
 		   const size_t startAt,const size_t batchSize,
-		   
-		   const float t_min_2,const float t_max_2,const int recursion_depth_2,
+		   const int recursion_depth_2,
 		   const SphereBuffer sphereBuffer,
 		   const LightBuffer lightBuffer
 		   // todo: consider
@@ -1297,12 +1277,8 @@ V3 traceRayBatch(
   /* float light = ComputeLighting(P,N,v,closestSphere->specular, spheres, sphereCount, lights, lightCount); */  
   
   float light = ComputeLightingBatch ( P,  N, v, closestSphere->specular,
-				       spheres, sphereCount, lights, lightCount,
-			   
-				       P,
-				       //   directionBuffer,
-				       // startAt, batchSize,
-				       t_min_2, t_max_2, recursion_depth_2,
+				       spheres,
+				       // t_min_2, t_max_2, recursion_depth_2,
 				       sphereBuffer,
 				       lightBuffer
 				       );
@@ -1353,7 +1329,7 @@ V3 traceRayBatch(
 		  // todo: 1 at a time? 
 		  1,
 		   
-		  EPSILON, BIG_NUMBER,
+		  // EPSILON, BIG_NUMBER,
 		  recursion_depth_2-1,
 		  sphereBuffer,
 		  lightBuffer
@@ -1649,7 +1625,7 @@ void fillRegion
 		   directionsBuffer,
 		   index, ////const  size_t startAt, // directions offset
 		   1, //const size_t batchSize,
-		   t_min, t_max, recursion_depth,
+		   recursion_depth,
 		   sphereBuffer,
 		   lightBuffer);
     #endif 
