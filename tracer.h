@@ -1281,7 +1281,7 @@ V3 traceRayBatch(
 				       // t_min_2, t_max_2, recursion_depth_2,
 				       sphereBuffer,
 				       lightBuffer
-				       );
+				       ); 
 
 
   local_color.x *= light;
