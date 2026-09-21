@@ -472,6 +472,15 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
   return result;
 }
 
+//todo: continue here
+// reseqrch required
+// timings for :
+// intersect ray sphre scalar
+// vs batching combination for intersection
+// batched ray, sphere
+// ray, batched sphere
+// batched rays and sphere
+
 
 RaySphereIntersection intersectRaySphereBatched(const V3 O,
 						const DirectionBuffer directionBuffer,
@@ -779,7 +788,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
   float y_buffer[4];
   float z_buffer[4];
   DirectionBuffer lightDirectionBuffer ={0};
-  lightDirectionBuffer.count = 1;
+  zlightDirectionBuffer.count = 1;
   lightDirectionBuffer.x = x_buffer;
   lightDirectionBuffer.y = y_buffer;
   lightDirectionBuffer.z = z_buffer;
