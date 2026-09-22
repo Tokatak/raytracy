@@ -764,7 +764,7 @@ void fillRegion
   float t_min, float t_max, int recursion_depth,
   Sphere* spheres, int sphereCount,
   Light* lights, int lightCount);
-void prepareLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict lights);
+void packLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict lights);
 
 int logcount = 10;
 int logs = 0;
@@ -1378,8 +1378,42 @@ void setPixelCanvas(float x, float y, V3 color, Buffer *buffer) {
                   buffer);
 }
 
+void packSphereBuffer(SphereBuffer* sphereBuffer, int sphereCount, Sphere* restrict spheres){
+    // todo: 4 floats for now, but consider more
+  int paddedSphereCount = ((sphereCount +3)/4)*4;
+  sphereBuffer->x = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer->y = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer->z = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer->radius = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer->r = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer->g = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer->b = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer->specular = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer->reflective = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer->rr = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer->count = sphereCount;
+  for(int i =0; i< sphereCount; i++ ){
+    Sphere s = spheres[i];
 
-void prepareLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict lights){
+    sphereBuffer->x[i] = s.position.x;
+    sphereBuffer->y[i] = s.position.y;
+    sphereBuffer->z[i] = s.position.z;
+
+    sphereBuffer->radius[i] = s.radius;
+
+    const float r = s.radius;
+    sphereBuffer->rr[i] = r*r;
+    
+    sphereBuffer->r[i] = s.color.x;
+    sphereBuffer->g[i] = s.color.y;
+    sphereBuffer->b[i] = s.color.z;
+
+    sphereBuffer->specular[i] = s.specular;
+    sphereBuffer->reflective[i] = s.reflective;    
+  }
+}
+
+void packLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict lights){
   size_t ambient = 0, point = 0, dir = 0;
   for (int i = 0; i < lightCount; i++) {
     switch (lights[i].type) {
@@ -1503,7 +1537,7 @@ void fillRegion
   actualUp.z = cameraDirection.x * right.y - cameraDirection.y * right.x;
 
   LightBuffer lightBuffer ={0};
-  prepareLightBuffer(&lightBuffer, lightCount, lights);
+  packLightBuffer(&lightBuffer, lightCount, lights);
 
   // todo: remove
   for( int i=0; i< sphereCount; i++){
@@ -1511,39 +1545,8 @@ void fillRegion
     spheres[i]._rr = r*r;
   }
 
-  // todo: 4 floats for now, but consider more
-  int paddedSphereCount = ((sphereCount +3)/4)*4;
   SphereBuffer sphereBuffer ={0};
-  sphereBuffer.x = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer.y = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer.z = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer.radius = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer.r = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer.g = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer.b = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer.specular = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer.reflective = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer.rr = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer.count = sphereCount;
-  for(int i =0; i< sphereCount; i++ ){
-    Sphere s = spheres[i];
-
-    sphereBuffer.x[i] = s.position.x;
-    sphereBuffer.y[i] = s.position.y;
-    sphereBuffer.z[i] = s.position.z;
-
-    sphereBuffer.radius[i] = s.radius;
-
-    const float r = s.radius;
-    sphereBuffer.rr[i] = r*r;
-    
-    sphereBuffer.r[i] = s.color.x;
-    sphereBuffer.g[i] = s.color.y;
-    sphereBuffer.b[i] = s.color.z;
-
-    sphereBuffer.specular[i] = s.specular;
-    sphereBuffer.reflective[i] = s.reflective;    
-  }
+  packSphereBuffer(&sphereBuffer, sphereCount, spheres);
 
 
   int targetBufferColorComponents = layout.components;
