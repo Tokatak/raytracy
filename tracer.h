@@ -1487,6 +1487,80 @@ void packLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict l
   }
 }
 
+void packDirections( DirectionBuffer* directionsBuffer,
+		     Camera camera, int width, int height, V3 actualUp,
+		     Region region, V3 right){
+  V3 viewportSize = camera.viewportSize;
+  float projectionPlane = camera.projectionPlane;
+  V3 cameraDirection = camera.direction;
+
+  float normWidth = viewportSize.x / width;
+  float normHeight = viewportSize.y / height;  
+  float cameraDirectionXprojectionPlaneX = cameraDirection.x * projectionPlane;
+  float cameraDirectionXprojectionPlaneY = cameraDirection.y * projectionPlane;
+  float cameraDirectionXprojectionPlaneZ = cameraDirection.z * projectionPlane;
+
+  int topEdge = region.top;
+  int bottomEdge = region.bot;
+
+  int leftEdge = region.left;
+  int righEdge = region.right;
+
+  // 640*480 307'200
+  int pixelCount = ((abs(topEdge) + abs(bottomEdge)) * (abs(leftEdge)+abs(righEdge) ) ) ;
+  
+  directionsBuffer->count = pixelCount;
+  directionsBuffer->x = malloc(sizeof(float_t)*pixelCount);
+  directionsBuffer->y = malloc(sizeof(float_t)*pixelCount);
+  directionsBuffer->z = malloc(sizeof(float_t)*pixelCount);
+
+  // todo: consider faield allocation 
+  //todo: consider alligned alocations
+/* #ifdef __AVX2__ */
+/* #define SIMD_ALIGNMENT 32  // AVX2 needs 32-byte alignment */
+/* #elif ____ */
+/* #define SIMD_ALIGNMENT 16  // SSE needs 16-byte alignment */
+/* #else */
+/* #define SIMD_ALIGNMENT 8   // Default */
+/* #endif */
+
+/*   // Allocate aligned memory for faster SIMD loads */
+/*   directionsBuffer->x = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
+/* 					 sizeof(float_t) * pixelCount); */
+/*   directionsBuffer->y = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
+/* 					 sizeof(float_t) * pixelCount); */
+/*   directionsBuffer->z = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
+/* 					 sizeof(float_t) * pixelCount); */
+
+  //todo: consider padding
+  
+  for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
+    const float viewportY = screeenY * normHeight;
+    const float baseX = cameraDirectionXprojectionPlaneX + actualUp.x * viewportY;
+    const float baseY = cameraDirectionXprojectionPlaneY + actualUp.y * viewportY;
+    const float baseZ = cameraDirectionXprojectionPlaneZ + actualUp.z * viewportY;
+    
+    for (int screenX = leftEdge; screenX < righEdge; screenX++) {
+      const float viewportX = screenX * normWidth;      
+      float x = baseX + right.x * viewportX;
+      float y = baseY + right.y * viewportX;
+      float z = baseZ + right.z * viewportX;
+
+      float dirLen = sqrtf(x*x + y*y + z*z);
+      float invDirLen = 1/dirLen;
+      if (dirLen > 0) {
+        x *= invDirLen;
+        y *= invDirLen;
+        z *= invDirLen;
+      }
+
+      directionsBuffer->x[pixelIndex] = x;
+      directionsBuffer->y[pixelIndex] = y;
+      directionsBuffer->z[pixelIndex] = z;
+      pixelIndex++;
+    }
+  }  
+}
 
 void fillRegion
 ( Region region, Camera camera,
@@ -1497,14 +1571,7 @@ void fillRegion
 {
   V3 origin = camera.position;
   V3 cameraDirection = camera.direction;
-  V3 viewportSize = camera.viewportSize;
-  float projectionPlane = camera.projectionPlane;
-   
-  int topEdge = region.top;
-  int bottomEdge = region.bot;
-
-  int leftEdge = region.left;
-  int righEdge = region.right;
+  int targetBufferColorComponents = layout.components;
 
   V3 color = {0};
 
@@ -1548,78 +1615,11 @@ void fillRegion
   SphereBuffer sphereBuffer ={0};
   packSphereBuffer(&sphereBuffer, sphereCount, spheres);
 
-
-  int targetBufferColorComponents = layout.components;
-  float normWidth = viewportSize.x / width;
-  float normHeight = viewportSize.y / height;
-  
-  float cameraDirectionXprojectionPlaneX = cameraDirection.x * projectionPlane;
-  float cameraDirectionXprojectionPlaneY = cameraDirection.y * projectionPlane;
-  float cameraDirectionXprojectionPlaneZ = cameraDirection.z * projectionPlane;
-
-  /* int halfWidth = width /2; */
-  /* int halfHeight = height/2; */
-
-  // 640*480 307'200
-  int expectedPixelCount = ((abs(topEdge) + abs(bottomEdge)) * (abs(leftEdge)+abs(righEdge) ) ) ;
-
   DirectionBuffer directionsBuffer = {0};
-  directionsBuffer.count = expectedPixelCount;
-  directionsBuffer.x = malloc(sizeof(float_t)*expectedPixelCount);
-  directionsBuffer.y = malloc(sizeof(float_t)*expectedPixelCount);
-  directionsBuffer.z = malloc(sizeof(float_t)*expectedPixelCount);
-
-  // todo: consider faield allocation 
-  //todo: consider alligned alocations
-/* #ifdef __AVX2__ */
-/* #define SIMD_ALIGNMENT 32  // AVX2 needs 32-byte alignment */
-/* #elif ____ */
-/* #define SIMD_ALIGNMENT 16  // SSE needs 16-byte alignment */
-/* #else */
-/* #define SIMD_ALIGNMENT 8   // Default */
-/* #endif */
-
-/*   // Allocate aligned memory for faster SIMD loads */
-/*   directionsBuffer.x = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
-/* 					 sizeof(float_t) * pixelCount); */
-/*   directionsBuffer.y = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
-/* 					 sizeof(float_t) * pixelCount); */
-/*   directionsBuffer.z = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
-/* 					 sizeof(float_t) * pixelCount); */
-
-  //todo: consider padding
-  
-  for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
-    const float viewportY = screeenY * normHeight;
-    const float baseX = cameraDirectionXprojectionPlaneX + actualUp.x * viewportY;
-    const float baseY = cameraDirectionXprojectionPlaneY + actualUp.y * viewportY;
-    const float baseZ = cameraDirectionXprojectionPlaneZ + actualUp.z * viewportY;
-    
-    for (int screenX = leftEdge; screenX < righEdge; screenX++) {
-      const float viewportX = screenX * normWidth;      
-      float x = baseX + right.x * viewportX;
-      float y = baseY + right.y * viewportX;
-      float z = baseZ + right.z * viewportX;
-
-      float dirLen = sqrtf(x*x + y*y + z*z);
-      float invDirLen = 1/dirLen;
-      if (dirLen > 0) {
-        x *= invDirLen;
-        y *= invDirLen;
-        z *= invDirLen;
-      }
-
-      directionsBuffer.x[pixelIndex] = x;
-      directionsBuffer.y[pixelIndex] = y;
-      directionsBuffer.z[pixelIndex] = z;
-      pixelIndex++;
-    }
-  }
-
+  packDirections(&directionsBuffer, camera, width, height, actualUp, region, right);
   
   size_t pixelCount = directionsBuffer.count; 
-  for ( size_t index = 0; index< pixelCount; index++){
-    
+  for ( size_t index = 0; index< pixelCount; index++){    
     //todo: provide test runs for scalar and simd
     /* #define SCALAR */
     #ifdef SCALAR
