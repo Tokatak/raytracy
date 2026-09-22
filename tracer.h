@@ -764,6 +764,7 @@ void fillRegion
   float t_min, float t_max, int recursion_depth,
   Sphere* spheres, int sphereCount,
   Light* lights, int lightCount);
+void prepareLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict lights);
 
 int logcount = 10;
 int logs = 0;
@@ -788,7 +789,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
   float y_buffer[4];
   float z_buffer[4];
   DirectionBuffer lightDirectionBuffer ={0};
-  zlightDirectionBuffer.count = 1;
+  lightDirectionBuffer.count = 1;
   lightDirectionBuffer.x = x_buffer;
   lightDirectionBuffer.y = y_buffer;
   lightDirectionBuffer.z = z_buffer;
@@ -1378,6 +1379,80 @@ void setPixelCanvas(float x, float y, V3 color, Buffer *buffer) {
 }
 
 
+void prepareLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict lights){
+  size_t ambient = 0, point = 0, dir = 0;
+  for (int i = 0; i < lightCount; i++) {
+    switch (lights[i].type) {
+    case LIGHT_AMBIENT: ambient++; break;
+    case LIGHT_POINT: point++; break;
+    case LIGHT_DIRECTIONAL: dir++; break;
+    }
+  }
+
+  // todo: 4 floats for now, but consider more
+  int paddedAmbient = ((ambient +3)/4)*4;  
+  lightBuffer->ambient_count = ambient;
+  // note calloc, making sure no junk light remains
+  lightBuffer->ambient_intensity = calloc(paddedAmbient,sizeof(float));
+
+  // todo: 4 floats for now, but consider more
+  int paddedPoint = ((point +3)/4)*4;  
+  lightBuffer->point_count = point;
+
+  // note calloc, junk in positions lead to infinity in dot
+  // and 0*inifnity as a intensity
+  lightBuffer->point_x = calloc(paddedPoint, sizeof(float));
+  lightBuffer->point_y = calloc(paddedPoint, sizeof(float));
+  lightBuffer->point_z = calloc(paddedPoint, sizeof(float));
+  
+  // note calloc, making sure no junk light remains
+  lightBuffer->point_intensity = calloc(paddedPoint,sizeof(float));
+
+  // todo: 4 floats for now, but consider more
+  int paddedDir = ((dir +3)/4)*4;  
+  lightBuffer->dir_count = dir;
+  // note calloc, junk in positions lead to infinity in dot
+  // and 0*inifnity as a intensity
+  lightBuffer->dir_x = calloc(paddedDir, sizeof(float));
+    //malloc(paddedDir*sizeof(float));
+  lightBuffer->dir_y = calloc(paddedDir, sizeof(float));
+    //malloc(paddedDir*sizeof(float));
+  lightBuffer->dir_z = calloc(paddedDir, sizeof(float));
+    //malloc(paddedDir*sizeof(float));
+  // note calloc, making sure no junk light remains
+  lightBuffer->dir_intensity = calloc(paddedDir,sizeof(float));
+
+  size_t ambient_idx = 0, point_idx = 0, dir_idx = 0;
+  for (int i=0; i< lightCount; i++){
+    const Light l = lights[i];
+    
+    switch (l.type){
+    case LIGHT_AMBIENT: {
+      lightBuffer->ambient_intensity[ambient_idx] = l.intensity;
+      ambient_idx ++;
+      break;
+    }
+    case LIGHT_POINT: {
+      lightBuffer->point_intensity[point_idx] = l.intensity;
+      lightBuffer->point_x[point_idx] = l.position.x;
+      lightBuffer->point_y[point_idx] = l.position.y;
+      lightBuffer->point_z[point_idx] = l.position.z;
+      point_idx ++;
+      break;
+    }
+    case LIGHT_DIRECTIONAL: {      
+      lightBuffer->dir_x[dir_idx] = l.position.x;
+      lightBuffer->dir_y[dir_idx] = l.position.y;
+      lightBuffer->dir_z[dir_idx] = l.position.z;
+      lightBuffer->dir_intensity[dir_idx] = l.intensity;
+      dir_idx ++;
+      break;
+    }
+    default: break;
+    }
+  }
+}
+
 
 void fillRegion
 ( Region region, Camera camera,
@@ -1428,78 +1503,7 @@ void fillRegion
   actualUp.z = cameraDirection.x * right.y - cameraDirection.y * right.x;
 
   LightBuffer lightBuffer ={0};
-
-  size_t ambient = 0, point = 0, dir = 0;
-  for (int i = 0; i < lightCount; i++) {
-    switch (lights[i].type) {
-    case LIGHT_AMBIENT: ambient++; break;
-    case LIGHT_POINT: point++; break;
-    case LIGHT_DIRECTIONAL: dir++; break;
-    }
-  }
-
-  // todo: 4 floats for now, but consider more
-  int paddedAmbient = ((ambient +3)/4)*4;  
-  lightBuffer.ambient_count = ambient;
-  // note calloc, making sure no junk light remains
-  lightBuffer.ambient_intensity = calloc(paddedAmbient,sizeof(float));
-
-  // todo: 4 floats for now, but consider more
-  int paddedPoint = ((point +3)/4)*4;  
-  lightBuffer.point_count = point;
-
-  // note calloc, junk in positions lead to infinity in dot
-  // and 0*inifnity as a intensity
-  lightBuffer.point_x = calloc(paddedPoint, sizeof(float));
-  lightBuffer.point_y = calloc(paddedPoint, sizeof(float));
-  lightBuffer.point_z = calloc(paddedPoint, sizeof(float));
-  
-  // note calloc, making sure no junk light remains
-  lightBuffer.point_intensity = calloc(paddedPoint,sizeof(float));
-
-  // todo: 4 floats for now, but consider more
-  int paddedDir = ((dir +3)/4)*4;  
-  lightBuffer.dir_count = dir;
-  // note calloc, junk in positions lead to infinity in dot
-  // and 0*inifnity as a intensity
-  lightBuffer.dir_x = calloc(paddedDir, sizeof(float));
-    //malloc(paddedDir*sizeof(float));
-  lightBuffer.dir_y = calloc(paddedDir, sizeof(float));
-    //malloc(paddedDir*sizeof(float));
-  lightBuffer.dir_z = calloc(paddedDir, sizeof(float));
-    //malloc(paddedDir*sizeof(float));
-  // note calloc, making sure no junk light remains
-  lightBuffer.dir_intensity = calloc(paddedDir,sizeof(float));
-
-  size_t ambient_idx = 0, point_idx = 0, dir_idx = 0;
-  for (int i=0; i< lightCount; i++){
-    const Light l = lights[i];
-    
-    switch (l.type){
-    case LIGHT_AMBIENT: {
-      lightBuffer.ambient_intensity[ambient_idx] = l.intensity;
-      ambient_idx ++;
-      break;
-    }
-    case LIGHT_POINT: {
-      lightBuffer.point_intensity[point_idx] = l.intensity;
-      lightBuffer.point_x[point_idx] = l.position.x;
-      lightBuffer.point_y[point_idx] = l.position.y;
-      lightBuffer.point_z[point_idx] = l.position.z;
-      point_idx ++;
-      break;
-    }
-    case LIGHT_DIRECTIONAL: {      
-      lightBuffer.dir_x[dir_idx] = l.position.x;
-      lightBuffer.dir_y[dir_idx] = l.position.y;
-      lightBuffer.dir_z[dir_idx] = l.position.z;
-      lightBuffer.dir_intensity[dir_idx] = l.intensity;
-      dir_idx ++;
-      break;
-    }
-    default: break;
-    }
-  }
+  prepareLightBuffer(&lightBuffer, lightCount, lights);
 
   // todo: remove
   for( int i=0; i< sphereCount; i++){
