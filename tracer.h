@@ -1413,6 +1413,19 @@ void packSphereBuffer(SphereBuffer* sphereBuffer, int sphereCount, Sphere* restr
   }
 }
 
+void freeSphereBuffer(SphereBuffer* buffer){
+  free(buffer->x);
+  free(buffer->y);
+  free(buffer->z);
+  free(buffer->radius);
+  free(buffer->r);
+  free(buffer->g);
+  free(buffer->b);
+  free(buffer->specular);
+  free(buffer->reflective);
+  free(buffer->rr);
+}
+
 void packLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict lights){
   size_t ambient = 0, point = 0, dir = 0;
   for (int i = 0; i < lightCount; i++) {
@@ -1487,6 +1500,20 @@ void packLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict l
   }
 }
 
+void freeLightBuffer(LightBuffer* buffer){
+  free(buffer->ambient_intensity);
+
+  free(buffer->point_x);
+  free(buffer->point_y);
+  free(buffer->point_z);
+  free(buffer->point_intensity);
+
+  free(buffer->dir_x);
+  free(buffer->dir_y);
+  free(buffer->dir_z);
+  free(buffer->dir_intensity);
+}
+
 void packDirections( DirectionBuffer* directionsBuffer,
 		     Camera camera, int width, int height, V3 actualUp,
 		     Region region, V3 right){
@@ -1532,8 +1559,6 @@ void packDirections( DirectionBuffer* directionsBuffer,
 /*   directionsBuffer->z = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
 /* 					 sizeof(float_t) * pixelCount); */
 
-  //todo: consider padding
-  
   for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
     const float viewportY = screeenY * normHeight;
     const float baseX = cameraDirectionXprojectionPlaneX + actualUp.x * viewportY;
@@ -1560,6 +1585,12 @@ void packDirections( DirectionBuffer* directionsBuffer,
       pixelIndex++;
     }
   }  
+}
+
+void freeDirectionBuffer(DirectionBuffer* buffer){
+  free(buffer->x);
+  free(buffer->y);
+  free(buffer->z);
 }
 
 void fillRegion
@@ -1663,38 +1694,10 @@ void fillRegion
   // todo: consider using pthreads
   // for omp paste -fopenmp in gcc compile line
   // #pragma omp parallel for
-
-  // todo:
-  //free directionsBuffer
-  free(directionsBuffer.x);
-  free(directionsBuffer.y);
-  free(directionsBuffer.z);
   
-  // todo: prettify
-  //free sphere buffer
-  free(sphereBuffer.x);
-  free(sphereBuffer.y);
-  free(sphereBuffer.z);
-  free(sphereBuffer.radius);
-  free(sphereBuffer.r);
-  free(sphereBuffer.g);
-  free(sphereBuffer.b);
-  free(sphereBuffer.specular);
-  free(sphereBuffer.reflective);
-  free(sphereBuffer.rr);
-
-  //light
-  free(lightBuffer.ambient_intensity);
-
-  free(lightBuffer.point_x);
-  free(lightBuffer.point_y);
-  free(lightBuffer.point_z);
-  free(lightBuffer.point_intensity);
-
-  free(lightBuffer.dir_x);
-  free(lightBuffer.dir_y);
-  free(lightBuffer.dir_z);
-  free(lightBuffer.dir_intensity);
+  freeSphereBuffer(&sphereBuffer);
+  freeLightBuffer(&lightBuffer);
+  freeDirectionBuffer(&directionsBuffer);
 }
 
 #endif
