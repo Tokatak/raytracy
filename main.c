@@ -6,6 +6,7 @@
 int main(int argc, char **argv) {
   (void)argc;
   (void)argv;
+  bool depth_only = (argc > 1 && argv[1][0] == '-' && argv[1][1] == 'd');
   
   Sphere spheres[] = {
     // position
@@ -70,11 +71,21 @@ int main(int argc, char **argv) {
   camera.direction = cameraDirection;
   camera.viewportSize = viewportSize;
   camera.projectionPlane = projectionPlane;
-  
-  fillRegion( region, camera,
-	      buffer, PIXEL_LAYOUT_RGB,
-	      1, INFINITY, recursion_depth,
-	      spheres, ARRAY_SIZE(spheres), lights, ARRAY_SIZE(lights));
+
+  if(depth_only){
+    fillRegionDepth( region, camera,
+		     buffer, PIXEL_LAYOUT_RGB,
+		     1, INFINITY, recursion_depth,
+		     spheres, ARRAY_SIZE(spheres), lights, ARRAY_SIZE(lights));
+  }
+  else
+    {
+    
+      fillRegion( region, camera,
+		  buffer, PIXEL_LAYOUT_RGB,
+		  1, INFINITY, recursion_depth,
+		  spheres, ARRAY_SIZE(spheres), lights, ARRAY_SIZE(lights));
+    }
 
 #ifndef PROFILE
   // profile

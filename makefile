@@ -4,6 +4,9 @@ build:
 # debug
 	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 $(CFLAGS) -o main main.c && ./main.exe
 
+depth:
+	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 $(CFLAGS) -o main main.c && ./main.exe -d
+
 optimized:
 	gcc -ffast-math  -Wall -Wextra -Wpedantic -O3  -march=native $(CFLAGS) -o main main.c && ./main.exe
 

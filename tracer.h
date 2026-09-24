@@ -740,6 +740,9 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 	     const Sphere* spheres, int sphereCount,
 	     Light* lights, int lightCount);
 
+V3 traceRayDepth( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
+		  const Sphere* spheres, int sphereCount,
+		  Light* lights, int lightCount);
 
 V3 traceRayBatch(
 		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
@@ -752,7 +755,20 @@ V3 traceRayBatch(
 		   const int recursion_depth_2,
 		   const SphereBuffer sphereBuffer,
 		   const LightBuffer lightbuffer
-		   //,ColorBuffer* const result
+		   );
+
+
+V3 traceRayBatchDepth (
+		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
+		   const Sphere* spheres, int sphereCount,
+		   Light* lights, int lightCount,
+
+		   const V3 Origin,
+		   const DirectionBuffer directionBuffer,
+		   const size_t startAt,const size_t batchSize,
+		   const int recursion_depth_2,
+		   const SphereBuffer sphereBuffer,
+		   const LightBuffer lightbuffer
 		   );
 
 
@@ -764,6 +780,14 @@ void fillRegion
   float t_min, float t_max, int recursion_depth,
   Sphere* spheres, int sphereCount,
   Light* lights, int lightCount);
+
+void fillRegionDepth
+( Region region, Camera camera,
+  Buffer buffer,PixelLayout layout,
+  float t_min, float t_max, int recursion_depth,
+  Sphere* restrict spheres, int sphereCount,
+  Light* restrict lights, int lightCount);
+
 void packLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict lights);
 
 int logcount = 10;
@@ -1221,6 +1245,29 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
   return result;
 }
 
+ V3 traceRayDepth( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
+	     const Sphere* spheres, int sphereCount,
+	     Light* lights, int lightCount){
+   (void)lights;
+   (void)lightCount;
+   (void)recursion_depth;
+    
+
+   const Sphere *closestSphere = NULL;
+  
+   RaySphereIntersection intersection = intersectRaySphereClosest(O, D, t_min, t_max, spheres, sphereCount);
+   /* float closest_t = BIG_NUMBER; */
+   closestSphere = intersection.sphere;
+   /* closest_t = intersection.t1; */
+
+
+   if( closestSphere == NULL ){
+     return DEFAULT_COLOR;
+   }
+
+   return closestSphere->color;
+ }
+
 
 // todo: cleanup legacy arguments
 V3 traceRayBatch(
@@ -1352,6 +1399,54 @@ V3 traceRayBatch(
   result.z = local_color.z*(1-reflective) + reflected_color.z*reflective;
   
   return result;
+}
+
+V3 traceRayBatchDepth(
+		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
+		   const Sphere* spheres, int sphereCount,
+		   Light* lights, int lightCount,
+
+		   const V3 Origin,
+		   const DirectionBuffer directionBuffer,
+
+		   // todo: propper handling
+		   const size_t startAt,const size_t batchSize,
+		   const int recursion_depth_2,
+		   const SphereBuffer sphereBuffer,
+		   const LightBuffer lightBuffer
+		   // todo: consider
+		   //		   ,ColorBuffer* const result
+		   ){
+
+  //todo: remove after batch is implemented
+  (void)Origin;
+  (void)batchSize;
+  (void)recursion_depth;
+  (void)sphereCount;
+  (void)lights;
+  (void)lightCount;
+  (void)lightBuffer;
+  (void)recursion_depth_2;
+  (void)D;
+  
+  /* float closest_t = BIG_NUMBER; */
+  const Sphere *closestSphere = NULL;
+
+  RaySphereIntersection intersection = intersectRaySphereBatched(O,
+								 directionBuffer,
+								 startAt,
+								 sphereBuffer,
+								 t_min,  t_max,
+								 spheres);    
+  closestSphere = intersection.sphere;
+  /* closest_t = intersection.t1; */
+
+
+  if( closestSphere == NULL ){
+    return DEFAULT_COLOR;
+  } 
+
+  return closestSphere->color;
 }
 
 void setPixelTexture(float x, float y, V3 color, Buffer *buffer) {
@@ -1677,6 +1772,112 @@ void fillRegion
 		   lightBuffer);
     #endif 
 
+      
+    const int byteOffset = index * targetBufferColorComponents;
+    bufferStart[byteOffset + layout.r_offset] =
+      (unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x)); 
+    bufferStart[byteOffset + layout.g_offset] =
+      (unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y)); 
+    bufferStart[byteOffset + layout.b_offset] =
+      (unsigned char)(color.z > 255.0f ? 255.0f : (color.z < 0.0f ? 0.0f : color.z));
+
+    if ( targetBufferColorComponents >3 ) {
+      bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0;
+    }
+  }
+
+  // todo: consider using pthreads
+  // for omp paste -fopenmp in gcc compile line
+  // #pragma omp parallel for
+  
+  freeSphereBuffer(&sphereBuffer);
+  freeLightBuffer(&lightBuffer);
+  freeDirectionBuffer(&directionsBuffer);
+}
+
+void fillRegionDepth
+( Region region, Camera camera,
+  Buffer buffer,PixelLayout layout,
+  float t_min, float t_max, int recursion_depth,
+  Sphere* restrict spheres, int sphereCount,
+  Light* restrict lights, int lightCount)
+{
+  V3 origin = camera.position;
+  V3 cameraDirection = camera.direction;
+  int targetBufferColorComponents = layout.components;
+
+  V3 color = {0};
+
+  int width = buffer.width;
+  int height = buffer.height;
+
+  unsigned char* bufferStart = buffer.start;
+  
+  // Create a right vector (perpendicular to camera direction)
+  // Assuming Y is up
+  V3 up = {0, 1, 0};
+  V3 right = {0};
+
+  // TODO: re-review
+  // cross
+  right.x = up.y * cameraDirection.z - up.z * cameraDirection.y;
+  right.y = up.z * cameraDirection.x - up.x * cameraDirection.z;
+  right.z = up.x * cameraDirection.y - up.y * cameraDirection.x;
+  
+  float rightLen = sqrtf(right.x*right.x + right.y*right.y + right.z*right.z);
+  if (rightLen > 0) {
+    right.x /= rightLen;
+    right.y /= rightLen;
+    right.z /= rightLen;
+  }
+  
+  V3 actualUp = {0};
+  actualUp.x = cameraDirection.y * right.z - cameraDirection.z * right.y;
+  actualUp.y = cameraDirection.z * right.x - cameraDirection.x * right.z;
+  actualUp.z = cameraDirection.x * right.y - cameraDirection.y * right.x;
+
+  LightBuffer lightBuffer ={0};
+  packLightBuffer(&lightBuffer, lightCount, lights);
+
+  // todo: remove
+  for( int i=0; i< sphereCount; i++){
+    float r = spheres[i].radius;
+    spheres[i]._rr = r*r;
+  }
+
+  SphereBuffer sphereBuffer ={0};
+  packSphereBuffer(&sphereBuffer, sphereCount, spheres);
+
+  DirectionBuffer directionsBuffer = {0};
+  packDirections(&directionsBuffer, camera, width, height, actualUp, region, right);
+  
+  size_t pixelCount = directionsBuffer.count; 
+  for ( size_t index = 0; index< pixelCount; index++){    
+    //todo: provide test runs for scalar and simd
+    /* #define SCALAR */
+    #ifdef SCALAR
+    color = traceRayDepth(origin,
+		     (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
+		     t_min, t_max, recursion_depth,
+		     spheres,  sphereCount,
+		     lights, lightCount);
+    #else 
+
+    color = traceRayBatchDepth(
+		   origin,
+		   (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
+		   t_min, t_max, recursion_depth,
+		   spheres,  sphereCount,
+		    lights, lightCount,
+
+		   origin,
+		   directionsBuffer,
+		   index, ////const  size_t startAt, // directions offset
+		   1, //const size_t batchSize,
+		   recursion_depth,
+		   sphereBuffer,
+		   lightBuffer);
+    #endif 
       
     const int byteOffset = index * targetBufferColorComponents;
     bufferStart[byteOffset + layout.r_offset] =
