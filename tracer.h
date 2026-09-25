@@ -781,8 +781,7 @@ void fillRegion
   Sphere* spheres, int sphereCount,
   Light* lights, int lightCount);
 
-void fillRegionDepth
-( Region region, Camera camera,
+void fillRegionDepth( Region region, Camera camera,
   Buffer buffer,PixelLayout layout,
   float t_min, float t_max, int recursion_depth,
   Sphere* restrict spheres, int sphereCount,
@@ -1862,7 +1861,7 @@ void fillRegionDepth
 		     spheres,  sphereCount,
 		     lights, lightCount);
     #else 
-
+ 
     color = traceRayBatchDepth(
 		   origin,
 		   (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
