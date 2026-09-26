@@ -1801,6 +1801,8 @@ void fillRegionDepth
   Sphere* restrict spheres, int sphereCount,
   Light* restrict lights, int lightCount)
 {
+  //todo: unused?
+  (void)recursion_depth;
   V3 origin = camera.position;
   V3 cameraDirection = camera.direction;
   int targetBufferColorComponents = layout.components;
@@ -1850,34 +1852,18 @@ void fillRegionDepth
   DirectionBuffer directionsBuffer = {0};
   packDirections(&directionsBuffer, camera, width, height, actualUp, region, right);
   
-  size_t pixelCount = directionsBuffer.count; 
-  for ( size_t index = 0; index< pixelCount; index++){    
+  size_t pixelCount = directionsBuffer.count;
+  // scalar 21-22 fps  0.044s
+  // simd  17.5-16 fps 0.056s / 19.4-19.5 fps 0.051
+  //#define SCALAR
+#ifdef SCALAR
+    for ( size_t index = 0; index< pixelCount; index++){    
     //todo: provide test runs for scalar and simd
-    /* #define SCALAR */
-    #ifdef SCALAR
     color = traceRayDepth(origin,
 		     (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
 		     t_min, t_max, recursion_depth,
 		     spheres,  sphereCount,
-		     lights, lightCount);
-    #else 
- 
-    color = traceRayBatchDepth(
-		   origin,
-		   (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
-		   t_min, t_max, recursion_depth,
-		   spheres,  sphereCount,
-		    lights, lightCount,
-
-		   origin,
-		   directionsBuffer,
-		   index, ////const  size_t startAt, // directions offset
-		   1, //const size_t batchSize,
-		   recursion_depth,
-		   sphereBuffer,
-		   lightBuffer);
-    #endif 
-      
+		     lights, lightCount);   
     const int byteOffset = index * targetBufferColorComponents;
     bufferStart[byteOffset + layout.r_offset] =
       (unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x)); 
@@ -1890,6 +1876,33 @@ void fillRegionDepth
       bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0;
     }
   }
+    
+#else // non SCALAR
+    V3 defaultcolor =(V3){0.0f,0.0f,0.0f};
+    for ( size_t index = 0; index< pixelCount; index++){
+      RaySphereIntersection intersection = intersectRaySphereBatched(origin,
+								     directionsBuffer,
+								     index,//startAt,
+								     sphereBuffer,
+								     t_min,  t_max,
+								     spheres);
+
+      color = intersection.sphere ? intersection.sphere->color :  defaultcolor;
+      
+      const int byteOffset = index * targetBufferColorComponents;
+      bufferStart[byteOffset + layout.r_offset] =
+	(unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x)); 
+      bufferStart[byteOffset + layout.g_offset] =
+	(unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y)); 
+      bufferStart[byteOffset + layout.b_offset] =
+	(unsigned char)(color.z > 255.0f ? 255.0f : (color.z < 0.0f ? 0.0f : color.z));
+
+      if ( targetBufferColorComponents >3 ) {
+	bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0;
+      }
+    }
+#endif
+  
 
   // todo: consider using pthreads
   // for omp paste -fopenmp in gcc compile line
