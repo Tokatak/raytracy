@@ -156,6 +156,19 @@ void render_test_scene(RenderTestContext* ctx){
 	     );
 }
 
+void render_test_scene_depth(RenderTestContext* ctx){
+  fillRegionDepth(
+	     DEFAULT_REGION,
+	     DEFAULT_CAMERA,
+	     ctx->render_buffer,
+	     PIXEL_LAYOUT_RGB,
+	     1, INFINITY,
+	     DEFAULT_RECURSION_DEPTH,
+	     ctx->spheres, ctx->sphere_count,
+	     ctx->lights, ctx->light_count
+	     );
+}
+
 // consider: exposing more verbosed fail reason
 bool validate_test_result(RenderTestContext* ctx){
   char path[256];
@@ -211,9 +224,15 @@ MU_TEST_SUITE(test_suite) {
   MU_RUN_TEST(light_directional);  
 }
 
+#include "depth.h"
+
+MU_TEST_SUITE(depth_suite) {
+  MU_RUN_TEST(depth);
+}
 
 int main(int argc, char *argv[]) {
   MU_RUN_SUITE(test_suite);
+  MU_RUN_SUITE(depth_suite);
   MU_REPORT();
   return MU_EXIT_CODE;
 }
