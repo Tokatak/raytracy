@@ -592,9 +592,9 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
       _mm_storeu_ps(hit_flags, hit_mask);
 
 
+      // continue here, remove scalars?
       // todo: this is ugly cleanup
-
-
+      
       // Initialize results
       float closest_t = BIG_NUMBER;
       int closest_sphere_idx = -1;
