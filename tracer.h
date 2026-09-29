@@ -492,7 +492,7 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   // RESULTS
   float r1_vals[4], r2_vals[4];
   //todo: consider mask?
-  float hit_flags[4];
+  //  float hit_flags[4];
   // RESULTS
 
   __m128 tmp_x;
@@ -564,8 +564,9 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 			       ); 
  
       __m128 zero = _mm_setzero_ps();
-      // todo:  consider using mask? 
-      __m128 hit_mask = _mm_cmpge_ps(disc, zero);  // 0xFFFFFFFF (-Nan) for hit, 0 for miss
+      // continue here !
+      // mask:consider using mask? 
+      //      __m128 hit_mask = _mm_cmpge_ps(disc, zero);  // 0xFFFFFFFF (-Nan) for hit, 0 for miss
       // hit_flags[i] == 0xFFFFFFFF =1 for hit
 
       disc = _mm_sqrt_ps(disc);
@@ -589,30 +590,25 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
       // 6. Store results
       _mm_storeu_ps(r1_vals, r1);
       _mm_storeu_ps(r2_vals, r2);
-      _mm_storeu_ps(hit_flags, hit_mask);
+      //      _mm_storeu_ps(hit_flags, hit_mask);
 
-
-      // continue here, remove scalars?
-      // todo: this is ugly cleanup
+      
       
       // Initialize results
       float closest_t = BIG_NUMBER;
       int closest_sphere_idx = -1;
-      // Find closest valid intersection
+      __m128 hits = _mm_set1_ps(closest_t);
+      
       for (int i = 0; i < 4; i++) {
-	if (*(int*)&hit_flags[i] < 0) {  // Check sign bit            
-	  // Check t1 (usually the closer intersection)
 	  if (r1_vals[i] > t_min && r1_vals[i] < t_max && r1_vals[i] < closest_t) {
 	    closest_t = r1_vals[i];
 	    closest_sphere_idx = i + sphereBatchOffset;
 	  }
             
-	  // Check t2 as well
 	  if (r2_vals[i] > t_min && r2_vals[i] < t_max && r2_vals[i] < closest_t) {
 	    closest_t = r2_vals[i];
 	    closest_sphere_idx = i + sphereBatchOffset;
 	  }
-	}
       }
 
       // todo: recheck, cleanup, add more comments
@@ -633,7 +629,9 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
       }
       else
 	{
-	}      
+	}
+
+      // check cycle ends
     }  
 
   return result;
