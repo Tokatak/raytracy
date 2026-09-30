@@ -491,6 +491,7 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   
   // RESULTS
   float r1_vals[4], r2_vals[4];
+  float indices_vals[4];
   //todo: consider mask?
   //  float hit_flags[4];
   // RESULTS
@@ -500,9 +501,36 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   __m128 tmp_z;
 
   RaySphereIntersection result = {0};
+  __m128 zero = _mm_setzero_ps();
  
+   // 0xFFFFFFFF (-Nan) for hit, 0 for miss
+  __m128 hit_mask = _mm_setzero_ps();
+  __m128 r1_masked = _mm_setzero_ps();
+  __m128 r2_masked = _mm_setzero_ps();
+
+  __m128 indices_batch = _mm_setzero_ps();
+  __m128 r_batch = _mm_setzero_ps();
+  
+  __m128 r = _mm_set1_ps(BIG_NUMBER); 
+  __m128 indices = _mm_set1_ps(BIG_NUMBER); 
+
+  __m128 min_gate = _mm_set1_ps(t_min);
+  __m128 max_gate = _mm_set1_ps(t_max);
+
+  __m128 result_compare_mask = _mm_setzero_ps();
+
+
+  // todo: un-tmp this
+  float tmp_index[4];
+
   for ( size_t sphereBatchOffset = 0; sphereBatchOffset < sphereBuffer.count; sphereBatchOffset+=4 )
-    {      
+    {
+      tmp_index[0] = sphereBatchOffset+0;
+      tmp_index[1] = sphereBatchOffset+1;
+      tmp_index[2] = sphereBatchOffset+2;
+      tmp_index[3] = sphereBatchOffset+3;
+      indices_batch = _mm_load_ps(tmp_index); //load 4 floats
+      
       tmp_x = _mm_load_ps(sphereBuffer.x+sphereBatchOffset); //load 4 floats
       tmp_y = _mm_load_ps(sphereBuffer.y+sphereBatchOffset);
       tmp_z = _mm_load_ps(sphereBuffer.z+sphereBatchOffset);
@@ -563,10 +591,9 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 					  )
 			       ); 
  
-      __m128 zero = _mm_setzero_ps();
       // continue here !
       // mask:consider using mask? 
-      //      __m128 hit_mask = _mm_cmpge_ps(disc, zero);  // 0xFFFFFFFF (-Nan) for hit, 0 for miss
+      hit_mask = _mm_cmpge_ps(disc, zero); 
       // hit_flags[i] == 0xFFFFFFFF =1 for hit
 
       disc = _mm_sqrt_ps(disc);
@@ -579,22 +606,43 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 
 
       __m128 r1 = _mm_add_ps(center, offset);
-      __m128 r2 = _mm_sub_ps(center, offset);
-  
+      __m128 r2 = _mm_sub_ps(center, offset);  
 
-      // hit_mask is -1 (all bits 1) for hits
-      /* __m128 r1_masked = _mm_and_ps(r1, hit_mask);  */
-      /* __m128 r2_masked = _mm_and_ps(r2, hit_mask); */
+      // mask combination - OR!
+      r1_masked = _mm_or_ps(r1, hit_mask);  
+      r2_masked = _mm_or_ps(r2, hit_mask);
 
+      r_batch= _mm_min_ps(r1, r2);
 
-      // 6. Store results
-      _mm_storeu_ps(r1_vals, r1);
-      _mm_storeu_ps(r2_vals, r2);
+      _mm_storeu_ps(r1_vals, r_batch);
+      /* _mm_storeu_ps(r2_vals, r); */
+
+      /* _mm_storeu_ps(r1_vals, r1); */
+      /* _mm_storeu_ps(r2_vals, r2);p */
       //      _mm_storeu_ps(hit_flags, hit_mask);
+      
+      __m128 max_mask = _mm_cmplt_ps(r_batch , max_gate);
+      __m128 min_mask = _mm_cmpgt_ps(r_batch , min_gate);
+      hit_mask = _mm_or_ps(hit_mask, max_mask);
+      hit_mask = _mm_or_ps(hit_mask, min_mask);
+      // mask ready
 
+      r_batch= _mm_or_ps(r_batch, hit_mask);
+      indices_batch = _mm_or_ps(indices_batch, hit_mask);
+
+      result_compare_mask = _mm_cmplt_ps(r_batch,r);
+      r_batch= _mm_or_ps(r_batch, result_compare_mask);
+      indices_batch = _mm_or_ps(indices_batch, result_compare_mask);
       
+      r = _mm_or_ps(_mm_and_ps(result_compare_mask, r_batch),
+		    _mm_andnot_ps(result_compare_mask, r));
       
-      // Initialize results
+      indices = _mm_or_ps(_mm_and_ps(result_compare_mask, indices_batch),
+		    _mm_andnot_ps(result_compare_mask, indices));
+
+
+      // todo: continue here, below, almost got it 
+      /* // Initialize results */
       float closest_t = BIG_NUMBER;
       int closest_sphere_idx = -1;
       __m128 hits = _mm_set1_ps(closest_t);
@@ -605,10 +653,10 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 	    closest_sphere_idx = i + sphereBatchOffset;
 	  }
             
-	  if (r2_vals[i] > t_min && r2_vals[i] < t_max && r2_vals[i] < closest_t) {
-	    closest_t = r2_vals[i];
-	    closest_sphere_idx = i + sphereBatchOffset;
-	  }
+	  /* if (r2_vals[i] > t_min && r2_vals[i] < t_max && r2_vals[i] < closest_t) { */
+	  /*   closest_t = r2_vals[i]; */
+	  /*   closest_sphere_idx = i + sphereBatchOffset; */
+	  /* } */
       }
 
       // todo: recheck, cleanup, add more comments
@@ -620,7 +668,7 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 	  if ( result.t1 > closest_t){
 	    result.t1 = closest_t;
 	    result.sphere = &(spheres[closest_sphere_idx]);
-	  }	  
+	  }
 	}
 	else {
 	  result.t1 = closest_t;
@@ -632,7 +680,44 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 	}
 
       // check cycle ends
-    }  
+    }
+
+
+
+  /* _mm_storeu_ps(r1_vals, r); */
+  /* _mm_storeu_ps(indices_vals, indices); */
+  
+
+  /* // */
+  /* // Initialize results */
+  /* float closest_t = BIG_NUMBER; */
+  /* int closest_sphere_idx = -1; */
+      
+  /* for (int i = 0; i < 4; i++) { */
+  /*   if (r1_vals[i] < closest_t) { */
+  /*     closest_t = r1_vals[i]; */
+  /*     closest_sphere_idx = indices_vals[i]; */
+  /*   } */
+  /* } */
+            
+  /*   if (closest_sphere_idx != -1) { */
+
+  /*     if( result.sphere){ */
+  /* 	// sphere found on prev batch, compare */
+  /* 	if ( result.t1 > closest_t){ */
+  /* 	  result.t1 = closest_t; */
+  /* 	  result.sphere = &(spheres[closest_sphere_idx]); */
+  /* 	} */
+  /*     } */
+  /*     else { */
+  /* 	result.t1 = closest_t; */
+  /* 	result.sphere = &(spheres[closest_sphere_idx]); */
+  /*     } */
+  /*   } */
+  /*   else */
+  /*     { */
+  /*     } */
+
 
   return result;
 }
