@@ -586,9 +586,10 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 			       ); 
  
       // continue here !
-      // mask:consider using mask? 
-      hit_mask = _mm_cmpge_ps(disc, zero); 
-      // hit_flags[i] == 0xFFFFFFFF =1 for hit
+      // cmpge
+      // a <= b ? 0xFF : 0
+      // disc < 0 ? 0xFF : 0
+      hit_mask = _mm_cmple_ps(disc, zero); 
 
       disc = _mm_sqrt_ps(disc);
 
@@ -604,90 +605,102 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
       r_batch= _mm_min_ps(r1, r2);
       _mm_storeu_ps(r1_vals, r_batch);
 
-
       
       // reduciton and checks
-      // max_mask = r_batch < max_gate
-      __m128 max_mask = _mm_cmplt_ps(r_batch , max_gate);
-      // min_mask = r_batch > min_gate
-      __m128 min_mask = _mm_cmpgt_ps(r_batch , min_gate);
-      // hit_mask = max_mask & min_mask
-      hit_mask = _mm_and_ps(hit_mask, max_mask);
-      hit_mask = _mm_and_ps(hit_mask, min_mask);
+      // 0 - hit 0xFF - miss
+      // this will lead to final min check against existing results
+      
+      // r_batch distances
+      // max_gate cutoff
+      // cmplt a > b ? 0xff : 0
+      // 0 - hit 0xFF - miss
+      __m128 max_mask = _mm_cmpgt_ps(r_batch , max_gate);
+      
+      // min_mask = r_batch < min_gate
+      // 0 - hit 0xFF - miss
+      __m128 min_mask = _mm_cmplt_ps(r_batch , min_gate);
 
-      r_batch = _mm_and_ps(r_batch, hit_mask);
-      indices_batch = _mm_and_ps(indices_batch, hit_mask);
+      // update desc hit_mask = max_mask & min_mask
+      // desc 0 for hit, 0xFF for miss
+      // masc 0 for hit, 0xFF for miss
+      //    0 ff 
+      //0   0 ff
+      //ff ff ff
+      hit_mask = _mm_or_ps(hit_mask, max_mask);
+      hit_mask = _mm_or_ps(hit_mask, min_mask);
+
+      // todo: trace what happens with D<0
+
+      // r_batch
+      // distance values
+      // hit mask 0 for hit, 0xFF for miss
+      // result distace for hit, 0xFF for miss
+
+      // r_batch = _mm_and_ps(r_batch, hit_mask);
+      r_batch = _mm_or_ps(
+			  _mm_andnot_ps(hit_mask, r_batch),  
+			  _mm_and_ps(hit_mask, big)         
+			  );
+
+      /* indices_batch = _mm_and_ps(indices_batch, hit_mask); */  
+      indices_batch = _mm_or_ps(
+				_mm_andnot_ps(hit_mask, indices_batch),  
+				_mm_and_ps(hit_mask, big)                
+				);
+
 
       // compare less then  a<b ? 0xff.. : 0
       // bug: here
       //  r_batch : 0(miss) 1(value) 0(miss) ...
       //  r       : value   value    value
       // misses < then value . misses should be 0xFF
-      result_compare_mask = _mm_cmpgt_ps(r_batch,r);
       
-      r_batch= _mm_and_ps(r_batch, result_compare_mask);
+      // todo: review
+      /* result_compare_mask = _mm_cmpgt_ps(r_batch,r); */
       
-      indices_batch = _mm_and_ps(indices_batch, result_compare_mask);
+      /* r_batch= _mm_and_ps(r_batch, result_compare_mask); */
       
-      r = _mm_or_ps(_mm_and_ps(result_compare_mask, r_batch),
-		    _mm_andnot_ps(result_compare_mask, r));
+      /* indices_batch = _mm_and_ps(indices_batch, result_compare_mask); */
       
-      indices = _mm_or_ps(_mm_and_ps(result_compare_mask, indices_batch),
-		    _mm_andnot_ps(result_compare_mask, indices));
-
-
-      // todo: this out of the loop
-      float closest_t = BIG_NUMBER;
-      int closest_sphere_idx = -1;
-      __m128 hits = _mm_set1_ps(closest_t);
+      /* r = _mm_or_ps(_mm_and_ps(result_compare_mask, r_batch), */
+      /* 		    _mm_andnot_ps(result_compare_mask, r)); */
       
-      for (int i = 0; i < 4; i++) {
-	  if (r1_vals[i] > t_min && r1_vals[i] < t_max && r1_vals[i] < closest_t) {
-	    closest_t = r1_vals[i];
-	    closest_sphere_idx = i + sphereBatchOffset;
-	  }
-      }
+      /* indices = _mm_or_ps(_mm_and_ps(result_compare_mask, indices_batch), */
+      /* 		    _mm_andnot_ps(result_compare_mask, indices)); */
+      __m128 better_mask = _mm_cmplt_ps(r_batch, r);
 
-      // todo: this out of the loop
-      if (closest_sphere_idx != -1) {
+      //  обновляем r и indices там, где новое лучше
+      r = _mm_or_ps(_mm_and_ps(better_mask, r_batch),
+		    _mm_andnot_ps(better_mask, r));
 
-	if( result.sphere){
-	  // sphere found on prev batch, compare
-	  if ( result.t1 > closest_t){
-	    result.t1 = closest_t;
-	    result.sphere = &(spheres[closest_sphere_idx]);
-	  }
-	}
-	else {
-	  result.t1 = closest_t;
-	  result.sphere = &(spheres[closest_sphere_idx]);
-	}
-      }
-      else
-	{
-	}
+      indices = _mm_or_ps(_mm_and_ps(better_mask, indices_batch),
+			  _mm_andnot_ps(better_mask, indices));
 
-      /* cycle ends */
     }
 
-  /* --- */
-  /* _mm_storeu_ps(r1_vals, r); */
-  /* _mm_storeu_ps(indices_vals, indices); */
-  /* // */
-  /* // Initialize results */
-  /* float closest_t = BIG_NUMBER; */
-  /* int closest_sphere_idx = -1; */
+
+  _mm_storeu_ps(r1_vals, r);
+  _mm_storeu_ps(indices_vals, indices);
+  //
+  // Initialize results
+  float closest_t = BIG_NUMBER;
+  int closest_sphere_idx = -1;
       
-  /* for (int i = 0; i < 4; i++) { */
-  /*   if (r1_vals[i] < closest_t) { */
-  /*     closest_t = r1_vals[i]; */
+  for (int i = 0; i < 4; i++) {
+    if (r1_vals[i] < closest_t) {
+      closest_t = r1_vals[i];
 
-  /*     closest_sphere_idx = indices_vals[i]; */
+      closest_sphere_idx = indices_vals[i];
 
-  /*     // bug: here */
-  /*     /\* closest_sphere_idx = 0; *\/ */
-  /*   } */
-  /* } */
+      // bug: here ? 
+      /* closest_sphere_idx = 0; */
+    }
+  }
+  
+  if (closest_sphere_idx >= 0 && closest_t < BIG_NUMBER) {
+    result.t1 = closest_t;
+    result.sphere = &spheres[closest_sphere_idx];
+  }
 
   return result;
 }
@@ -1907,8 +1920,9 @@ void fillRegionDepth
   
   size_t pixelCount = directionsBuffer.count;
   // scalar 21-22 fps  0.044s
-  // simd  17.5-16 fps 0.056s / 19.4-19.5 fps 0.051
-  //#define SCALAR
+  // simd  17.5-16 fps 0.056s / 19.4-19.5 fps 0.051 / 16.05
+  
+  /* #define SCALAR */
 #ifdef SCALAR
     for ( size_t index = 0; index< pixelCount; index++){    
     //todo: provide test runs for scalar and simd
