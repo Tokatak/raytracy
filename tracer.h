@@ -585,7 +585,6 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 					  )
 			       ); 
  
-      // continue here !
       // cmpge
       // a <= b ? 0xFF : 0
       // disc < 0 ? 0xFF : 0
@@ -604,8 +603,7 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 
       r_batch= _mm_min_ps(r1, r2);
       _mm_storeu_ps(r1_vals, r_batch);
-
-      
+     
       // reduciton and checks
       // 0 - hit 0xFF - miss
       // this will lead to final min check against existing results
@@ -647,41 +645,19 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 				_mm_andnot_ps(hit_mask, indices_batch),  
 				_mm_and_ps(hit_mask, big)                
 				);
-
-
-      // compare less then  a<b ? 0xff.. : 0
-      // bug: here
-      //  r_batch : 0(miss) 1(value) 0(miss) ...
-      //  r       : value   value    value
-      // misses < then value . misses should be 0xFF
-      
-      // todo: review
-      /* result_compare_mask = _mm_cmpgt_ps(r_batch,r); */
-      
-      /* r_batch= _mm_and_ps(r_batch, result_compare_mask); */
-      
-      /* indices_batch = _mm_and_ps(indices_batch, result_compare_mask); */
-      
-      /* r = _mm_or_ps(_mm_and_ps(result_compare_mask, r_batch), */
-      /* 		    _mm_andnot_ps(result_compare_mask, r)); */
-      
-      /* indices = _mm_or_ps(_mm_and_ps(result_compare_mask, indices_batch), */
-      /* 		    _mm_andnot_ps(result_compare_mask, indices)); */
       __m128 better_mask = _mm_cmplt_ps(r_batch, r);
 
-      //  обновляем r и indices там, где новое лучше
+      // renew if required
       r = _mm_or_ps(_mm_and_ps(better_mask, r_batch),
 		    _mm_andnot_ps(better_mask, r));
 
       indices = _mm_or_ps(_mm_and_ps(better_mask, indices_batch),
 			  _mm_andnot_ps(better_mask, indices));
-
     }
-
 
   _mm_storeu_ps(r1_vals, r);
   _mm_storeu_ps(indices_vals, indices);
-  //
+  
   // Initialize results
   float closest_t = BIG_NUMBER;
   int closest_sphere_idx = -1;
@@ -689,11 +665,7 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   for (int i = 0; i < 4; i++) {
     if (r1_vals[i] < closest_t) {
       closest_t = r1_vals[i];
-
       closest_sphere_idx = indices_vals[i];
-
-      // bug: here ? 
-      /* closest_sphere_idx = 0; */
     }
   }
   
