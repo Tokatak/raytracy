@@ -490,10 +490,8 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 						const Sphere* spheres){
   
   // RESULTS
-  float r1_vals[4], r2_vals[4];
+  float r1_vals[4];
   float indices_vals[4];
-  //todo: consider mask?
-  //  float hit_flags[4];
   // RESULTS
 
   __m128 tmp_x;
@@ -502,10 +500,7 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 
   RaySphereIntersection result = {0};
  
-   // 0xFFFFFFFF (-Nan) for hit, 0 for miss
   __m128 hit_mask = _mm_setzero_ps();
-  /* __m128 r1_masked = _mm_setzero_ps(); */
-  /* __m128 r2_masked = _mm_setzero_ps(); */
 
   __m128 indices_batch = _mm_setzero_ps();
   __m128 r_batch = _mm_setzero_ps();
@@ -516,9 +511,7 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   const __m128 max_gate = _mm_set1_ps(t_max);
 
   __m128 r = big;
-  __m128 indices = big;
-  
-  __m128 result_compare_mask = _mm_setzero_ps();
+  __m128 indices = big;  
 
   for ( size_t sphereBatchOffset = 0; sphereBatchOffset < sphereBuffer.count; sphereBatchOffset+=4 )
     {
