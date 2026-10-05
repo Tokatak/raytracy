@@ -497,7 +497,7 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   __m128 tmp_x;
   __m128 tmp_y;
   __m128 tmp_z;
-
+ 
   RaySphereIntersection result = {0};
  
   __m128 hit_mask = _mm_setzero_ps();
