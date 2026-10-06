@@ -472,7 +472,7 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
   return result;
 }
 
-//todo: continue here
+//todo: continue here 
 // reseqrch required
 // timings for :
 // intersect ray sphre scalar
