@@ -252,7 +252,7 @@ bool ppmbuffer_compare_combine(PpmBuffer* abuffer, PpmBuffer* bbuffer, PpmBuffer
 
 #endif
 
-//todo: consider prettify
+//todo: consider prettify 
 #ifndef m128V3
 #define m128V3
 
