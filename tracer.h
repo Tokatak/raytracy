@@ -502,7 +502,8 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
  
   __m128 hit_mask = _mm_setzero_ps();
 
-  __m128 indices_batch = _mm_setzero_ps();
+  __m128 indices_batch = _mm_setr_ps(0.0f, 1.0f, 2.0f, 3.0f);
+  const __m128 four = _mm_set1_ps(4.0f);
   __m128 r_batch = _mm_setzero_ps();
 
   const __m128 big = _mm_set1_ps(BIG_NUMBER);
@@ -513,6 +514,19 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   __m128 r = big;
   __m128 indices = big;  
 
+  // this will be removed if batch per sphere will be converted
+  // to batch per direction
+  const __m128 dx = _mm_set1_ps(directionBuffer.x[startAt]);
+  const __m128 dy = _mm_set1_ps(directionBuffer.y[startAt]);
+  const __m128 dz = _mm_set1_ps(directionBuffer.z[startAt]);
+  const __m128 a = _mm_add_ps(_mm_add_ps(_mm_mul_ps(dx,dx), _mm_mul_ps(dy,dy)),
+			      _mm_mul_ps(dz,dz));
+  const __m128 inv_2a = _mm_div_ps(_mm_set1_ps(1.0f), _mm_add_ps(a, a));
+  
+  __m128 ocx = _mm_set1_ps(O.x); // load scalar
+  __m128 ocy = _mm_set1_ps(O.y);
+  __m128 ocz = _mm_set1_ps(O.z);
+  
   for ( size_t sphereBatchOffset = 0; sphereBatchOffset < sphereBuffer.count; sphereBatchOffset+=4 )
     {
       indices_batch = _mm_setr_ps(sphereBatchOffset+0, sphereBatchOffset+1,
@@ -522,27 +536,9 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
       tmp_y = _mm_load_ps(sphereBuffer.y+sphereBatchOffset);
       tmp_z = _mm_load_ps(sphereBuffer.z+sphereBatchOffset);
  
-      __m128 ocx = _mm_set1_ps(O.x); // load scalar
-      __m128 ocy = _mm_set1_ps(O.y);
-      __m128 ocz = _mm_set1_ps(O.z);
-
       ocx = _mm_sub_ps(ocx, tmp_x);
       ocy = _mm_sub_ps(ocy, tmp_y);
       ocz = _mm_sub_ps(ocz, tmp_z);
-
-      // dx, dy, dz
-      tmp_x = _mm_set1_ps(directionBuffer.x[startAt]);
-      tmp_y = _mm_set1_ps(directionBuffer.y[startAt]);
-      tmp_z = _mm_set1_ps(directionBuffer.z[startAt]);
-
-  
-      /* const float a = dx*dx + dy*dy + dz*dz;     */
-      // todo: check if reuse tmp_ is better then new set of registers
-      tmp_x = _mm_mul_ps(tmp_x, tmp_x);
-      tmp_y = _mm_mul_ps(tmp_y, tmp_y);
-      tmp_z = _mm_mul_ps(tmp_z, tmp_z);
-      __m128 a = _mm_add_ps(_mm_add_ps(tmp_x, tmp_y), tmp_z);
-
 
       /* const float b = 2.0f * (ocx*dx + ocy*dy + ocz*dz); */
       tmp_x = _mm_set1_ps(directionBuffer.x[startAt]);
@@ -554,7 +550,6 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
       tmp_z = _mm_mul_ps(tmp_z, ocz);
       __m128 b = _mm_add_ps(_mm_add_ps(tmp_x, tmp_y), tmp_z);
       b = _mm_add_ps(b,b);
-  
   
       /* const float c = ocx*ocx + ocy*ocy + ocz*ocz - rr; */
       ocx = _mm_mul_ps(ocx, ocx);
@@ -585,11 +580,8 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 
       disc = _mm_sqrt_ps(disc);
 
-      // inv a
-      a =_mm_div_ps(_mm_set1_ps(1.0f), _mm_add_ps(a,a));
-
-      __m128 center = _mm_mul_ps(_mm_sub_ps(zero, b), a);
-      __m128 offset = _mm_mul_ps(disc, a);
+      __m128 center = _mm_mul_ps(_mm_sub_ps(zero, b), inv_2a);
+      __m128 offset = _mm_mul_ps(disc, inv_2a);
 
       __m128 r1 = _mm_add_ps(center, offset);
       __m128 r2 = _mm_sub_ps(center, offset);
@@ -646,6 +638,9 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 
       indices = _mm_or_ps(_mm_and_ps(better_mask, indices_batch),
 			  _mm_andnot_ps(better_mask, indices));
+
+      // advance indices
+      indices_batch = _mm_add_ps(indices_batch, four);
     }
 
   _mm_storeu_ps(r1_vals, r);
@@ -1885,7 +1880,7 @@ void fillRegionDepth
   
   size_t pixelCount = directionsBuffer.count;
   // scalar 21-22 fps  0.044s
-  // simd  17.5-16 fps 0.056s / 19.4-19.5 fps 0.051 / 16.05
+  // simd  17.5-16 fps 0.056s / 19.4-19.5 fps 0.051 / 16.05  / 14.5
   
   /* #define SCALAR */
 #ifdef SCALAR
