@@ -519,37 +519,31 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   const __m128 dx = _mm_set1_ps(directionBuffer.x[startAt]);
   const __m128 dy = _mm_set1_ps(directionBuffer.y[startAt]);
   const __m128 dz = _mm_set1_ps(directionBuffer.z[startAt]);
+  
   const __m128 a = _mm_add_ps(_mm_add_ps(_mm_mul_ps(dx,dx), _mm_mul_ps(dy,dy)),
 			      _mm_mul_ps(dz,dz));
   const __m128 inv_2a = _mm_div_ps(_mm_set1_ps(1.0f), _mm_add_ps(a, a));
-  
-  __m128 ocx = _mm_set1_ps(O.x); // load scalar
-  __m128 ocy = _mm_set1_ps(O.y);
-  __m128 ocz = _mm_set1_ps(O.z);
+
+  const __m128 ox = _mm_set1_ps(O.x); // load scalar
+  const __m128 oy = _mm_set1_ps(O.y);
+  const __m128 oz = _mm_set1_ps(O.z);
   
   for ( size_t sphereBatchOffset = 0; sphereBatchOffset < sphereBuffer.count; sphereBatchOffset+=4 )
     {
-      indices_batch = _mm_setr_ps(sphereBatchOffset+0, sphereBatchOffset+1,
-                            sphereBatchOffset+2, sphereBatchOffset+3);
       
       tmp_x = _mm_load_ps(sphereBuffer.x+sphereBatchOffset); //load 4 floats
       tmp_y = _mm_load_ps(sphereBuffer.y+sphereBatchOffset);
       tmp_z = _mm_load_ps(sphereBuffer.z+sphereBatchOffset);
- 
-      ocx = _mm_sub_ps(ocx, tmp_x);
-      ocy = _mm_sub_ps(ocy, tmp_y);
-      ocz = _mm_sub_ps(ocz, tmp_z);
+
+      __m128 ocx = _mm_sub_ps(ox, tmp_x);
+      __m128 ocy = _mm_sub_ps(oy, tmp_y);
+      __m128 ocz = _mm_sub_ps(oz, tmp_z);
 
       /* const float b = 2.0f * (ocx*dx + ocy*dy + ocz*dz); */
-      tmp_x = _mm_set1_ps(directionBuffer.x[startAt]);
-      tmp_y = _mm_set1_ps(directionBuffer.y[startAt]);
-      tmp_z = _mm_set1_ps(directionBuffer.z[startAt]);
-
-      tmp_x = _mm_mul_ps(tmp_x, ocx);
-      tmp_y = _mm_mul_ps(tmp_y, ocy);
-      tmp_z = _mm_mul_ps(tmp_z, ocz);
-      __m128 b = _mm_add_ps(_mm_add_ps(tmp_x, tmp_y), tmp_z);
-      b = _mm_add_ps(b,b);
+      __m128 b = _mm_add_ps(_mm_add_ps(_mm_mul_ps(dx, ocx), _mm_mul_ps(dy, ocy)),
+			    _mm_mul_ps(dz, ocz));
+      b = _mm_add_ps(b, b);
+      
   
       /* const float c = ocx*ocx + ocy*ocy + ocz*ocz - rr; */
       ocx = _mm_mul_ps(ocx, ocx);
