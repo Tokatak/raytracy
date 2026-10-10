@@ -716,7 +716,6 @@ typedef struct{
 } Buffer;
 
 // centered zero
-// todo:  needs a better name
 typedef struct{
   int top;
   int bot;
@@ -984,12 +983,9 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 	/*   result->y = twoNDotl*N.y-R.y; */
 	/*   result->z = twoNDotl*N.z-R.z; */
 	/* } */
-      // todo: m128 dot
-      __m128 twoNdotlX = _mm_mul_ps(Nx, Lx);
-      __m128 twoNdotlY = _mm_mul_ps(Ny, Ly);
-      __m128 twoNdotlZ = _mm_mul_ps(Nz, Lz);
-      __m128 twoNdot = _mm_add_ps(twoNdotlX, twoNdotlY);
-      twoNdot = _mm_add_ps(twoNdot, twoNdotlZ);
+
+      __m128 twoNdot = m128_dot( Nx, Ny, Nz,
+			  Lx, Ly, Lz);
       twoNdot = _mm_mul_ps(twoNdot, _mm_set1_ps(2.0));
 	  
       __m128 reflectedX = _mm_mul_ps(twoNdot,Nx);
@@ -1105,12 +1101,9 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 	/*   result->y = twoNDotl*N.y-R.y; */
 	/*   result->z = twoNDotl*N.z-R.z; */
 	/* } */
-      // todo: m128 dot
-      __m128 twoNdotlX = _mm_mul_ps(Nx, Lx);
-      __m128 twoNdotlY = _mm_mul_ps(Ny, Ly);
-      __m128 twoNdotlZ = _mm_mul_ps(Nz, Lz);
-      __m128 twoNdot = _mm_add_ps(twoNdotlX, twoNdotlY);
-      twoNdot = _mm_add_ps(twoNdot, twoNdotlZ);
+
+      __m128 twoNdot = m128_dot( Nx, Ny, Nz,
+			  Lx, Ly, Lz);
       twoNdot = _mm_mul_ps(twoNdot, _mm_set1_ps(2.0));
 	  
       __m128 reflectedX = _mm_mul_ps(twoNdot,Nx);
@@ -1125,7 +1118,6 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 
       /*float rDotV = v3_dot( Reflection, View); */
       //Vx,Vy,vz
-      //todo: update all to m128_dot
       __m128 rdotM128 = m128_dot(reflectedX, reflectedY, reflectedZ,
 				Vx,Vy,Vz);
       __m128 rdotM128positive = _mm_max_ps(rdotM128, zero);
