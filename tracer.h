@@ -811,6 +811,7 @@ void packLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict l
 int logcount = 10;
 int logs = 0;
 
+#ifndef SCALAR 
 float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 			   const Sphere* spheres,
 			   // const float t_min_2,const float t_max_2,const int recursion_depth_2,
@@ -1144,6 +1145,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 
   return intensity;
 }
+#endif
 
 float ComputeLighting(V3 P, V3 N, V3 View, float s,
 		      const Sphere* spheres, int sphereCount,
@@ -1280,6 +1282,7 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
  }
 
 
+#ifndef SCALAR
 // todo: cleanup legacy arguments
 V3 traceRayBatch(
 		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
@@ -1411,6 +1414,7 @@ V3 traceRayBatch(
   
   return result;
 }
+#endif
 
 V3 traceRayBatchDepth(
 		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
