@@ -154,7 +154,7 @@ int ppmbuffer_same_px(const PpmBuffer* restrict abuffer,const PpmBuffer* restric
         printf("Error: NULL pointer passed to SameImage\n");
         return -1;
     }
-    
+     
     if (!abuffer->buffer || !bbuffer->buffer) {
         printf("Error: One or both buffers are NULL\n");
         return -1;
@@ -1699,6 +1699,7 @@ void freeDirectionBuffer(DirectionBuffer* buffer){
   free(buffer->z);
 }
 
+// todo: make sure to run simd and scalar test version
 void fillRegion
 ( Region region, Camera camera,
   Buffer buffer,PixelLayout layout,
@@ -1868,7 +1869,7 @@ void fillRegionDepth
   // scalar 21-22 fps  0.044s
   // simd  17.5-16 fps 0.056s / 19.4-19.5 fps 0.051 / 16.05  / 14.5
   
-  /* #define SCALAR */
+/* #define SCALAR */
 #ifdef SCALAR
     for ( size_t index = 0; index< pixelCount; index++){    
     //todo: provide test runs for scalar and simd
