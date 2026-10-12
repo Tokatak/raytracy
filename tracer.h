@@ -472,7 +472,10 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
   return result;
 }
 
-//todo: continue here 
+//todo: continue here
+// tests - add 5th sphere
+// tests - separate screenshots for variants or tolerance
+
 // reseqrch required
 // timings for :
 // intersect ray sphre scalar
@@ -503,7 +506,6 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   __m128 hit_mask = _mm_setzero_ps();
 
   __m128 indices_batch = _mm_setr_ps(0.0f, 1.0f, 2.0f, 3.0f);
-  const __m128 four = _mm_set1_ps(4.0f);
   __m128 r_batch = _mm_setzero_ps();
 
   const __m128 big = _mm_set1_ps(BIG_NUMBER);
@@ -530,6 +532,9 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   
   for ( size_t sphereBatchOffset = 0; sphereBatchOffset < sphereBuffer.count; sphereBatchOffset+=4 )
     {
+      // todo: condider indices stored sequentially
+      indices_batch = _mm_setr_ps(sphereBatchOffset+0, sphereBatchOffset+1,
+                            sphereBatchOffset+2, sphereBatchOffset+3);
       
       tmp_x = _mm_load_ps(sphereBuffer.x+sphereBatchOffset); //load 4 floats
       tmp_y = _mm_load_ps(sphereBuffer.y+sphereBatchOffset);
@@ -632,9 +637,6 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
 
       indices = _mm_or_ps(_mm_and_ps(better_mask, indices_batch),
 			  _mm_andnot_ps(better_mask, indices));
-
-      // advance indices
-      indices_batch = _mm_add_ps(indices_batch, four);
     }
 
   _mm_storeu_ps(r1_vals, r);
