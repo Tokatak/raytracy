@@ -4,6 +4,22 @@
 #include <stdbool.h>
 #include <string.h>
 
+#ifndef test_context_h
+#define test_context_h
+
+typedef struct{
+  PpmBuffer generated;
+  PpmBuffer loaded;
+  Buffer render_buffer;
+  Sphere spheres[4];
+  int sphere_count;
+  Light lights[3];
+  int light_count;
+  char test_name[256];
+} RenderTestContext;
+
+#endif
+
 // windows.h stuff
 #ifdef LoadImage
 #undef LoadImage
@@ -23,6 +39,10 @@ void pathToFailedScreenshotFromName(char* target, const char* testName){
 
 void pathToScreenshotFromName(char* target, const char* testName){
   sprintf(target, "./%s/%s.ppm", SCREENSHOT_FOLDER, testName);
+}
+
+void pathToScreenshotFromContext(char* target, RenderTestContext* context){
+  sprintf(target, "./%s/%s.ppm", SCREENSHOT_FOLDER, context->test_name);
 }
 
 bool fileExists(char* path){
@@ -69,18 +89,6 @@ const Light DEFAULT_LIGHTS[] = {
   {LIGHT_POINT, 0.6, {2, 1, 0}},
   {LIGHT_DIRECTIONAL, 0.2, {1, 4, 4}},
 };
-
-typedef struct{
-  PpmBuffer generated;
-  PpmBuffer loaded;
-  Buffer render_buffer;
-  Sphere spheres[4];
-  int sphere_count;
-  Light lights[3];
-  int light_count;
-  char test_name[256];
-} RenderTestContext;
-
 
 // Camera
 const V3 DEFAULT_ORIGIN = {0};
