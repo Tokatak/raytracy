@@ -20,7 +20,31 @@ bool ppmbuffer_load_into(char* restrict path, PpmBuffer* restrict result);
 bool ppmbuffer_same(const PpmBuffer* restrict abuffer,const PpmBuffer* restrict bbuffer);
 int ppmbuffer_same_px(const PpmBuffer* restrict abuffer,const PpmBuffer* restrict bbuffer);
 bool ppmbuffer_compare_combine(PpmBuffer* restrict abuffer, PpmBuffer* restrict bbuffer, PpmBuffer* restrict result);
+void ppmbuffer_save_path_name(const char* restrict path,
+		    const char* restrict fileName,
+			 const PpmBuffer* restrict ppm_buffer);
 
+
+static void mkdirs(const char* path) {
+#ifdef _WIN32
+    char cmd[512];
+    snprintf(cmd, sizeof(cmd), "if not exist \"%s\" mkdir \"%s\"", path, path);
+    system(cmd);
+#else
+    char cmd[512];
+    snprintf(cmd, sizeof(cmd), "mkdir -p \"%s\"", path);
+    system(cmd);
+#endif
+}
+
+void ppmbuffer_save_path_name(const char* restrict path,
+		    const char* restrict fileName,
+		    const PpmBuffer* restrict ppm_buffer){
+  char fullPath[4096];
+  snprintf(fullPath, sizeof(fullPath), "%s/%s", path, fileName);
+  mkdirs(path);
+  ppmbuffer_save(fullPath, ppm_buffer);
+}
 
 void ppmbuffer_save(const char* restrict fileName,const PpmBuffer* restrict ppm_buffer){
   unsigned char* buffer = ppm_buffer->buffer;

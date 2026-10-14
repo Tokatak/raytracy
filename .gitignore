@@ -6,7 +6,8 @@
 *.pdb
 
 *.ppm
-!tests/*.ppm
+!tests/**/*.ppm
+tests/failed/*.ppm
 
 *~
 *#*

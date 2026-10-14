@@ -3,7 +3,7 @@ CFLAGS  = -ffast-math -Wall -Wextra -I./ -I./external/minunit -O2
 LDFLAGS =
 
 VARIANT_scalar = -DSCALAR
-VARIANT_simd   = -msse3
+VARIANT_simd   = -msse3 -DSIMD
 
 VARIANTS = scalar simd
 
@@ -34,7 +34,7 @@ tests-build-cl:
 	cl /Zi /DEBUG /EHsc /I ./ /I ./external/* ./tests/main.c /Fe:cl_test_suite.exe
 # outdated end
 tests-build: tests-build-scalar tests-build-simd
-tests-run:
+tests-run: # todo: consider smarter define itteration
 	@printf "==SCALAR==\n"
 	-test_suite_scalar.exe 
 	@printf "==SIMD==\n"

@@ -16,6 +16,7 @@ typedef struct{
   Light lights[3];
   int light_count;
   char test_name[256];
+  char defines[256];
 } RenderTestContext;
 
 #endif
@@ -33,17 +34,32 @@ typedef struct{
 
 #define SCREENSHOT_FOLDER "tests"
 #define FAILED_SCREENSHOT_FOLDER "failed"
-void pathToFailedScreenshotFromName(char* target, const char* testName){
-  sprintf(target, "./%s/%s/%s.ppm", SCREENSHOT_FOLDER, FAILED_SCREENSHOT_FOLDER, testName);
+
+void pathToScreenshotFromContextFull(char* target, RenderTestContext* context){
+  sprintf(target, "./%s/%s/%s.ppm",
+	  SCREENSHOT_FOLDER, context->defines, context->test_name);
 }
 
-void pathToScreenshotFromName(char* target, const char* testName){
-  sprintf(target, "./%s/%s.ppm", SCREENSHOT_FOLDER, testName);
+void pathToScreenshotFromContex(char* target, RenderTestContext* context){
+  sprintf(target, "./%s/%s",
+	  SCREENSHOT_FOLDER, context->defines);
 }
 
-void pathToScreenshotFromContext(char* target, RenderTestContext* context){
-  sprintf(target, "./%s/%s.ppm", SCREENSHOT_FOLDER, context->test_name);
+void fileNameFromContext(char* target, RenderTestContext* context){
+    sprintf(target, "%s.ppm", context->test_name);
 }
+
+
+void pathToFailedScreenshotFromContext(char* target, RenderTestContext* context){
+  sprintf(target, "./%s/%s/%s/%s.ppm",
+	  SCREENSHOT_FOLDER, FAILED_SCREENSHOT_FOLDER, context->defines, context->test_name);
+}
+
+void pathToFailedFolderFromContext(char* target, RenderTestContext* context){
+  sprintf(target, "./%s/%s/%s",
+	  SCREENSHOT_FOLDER, FAILED_SCREENSHOT_FOLDER, context->defines);
+}
+
 
 bool fileExists(char* path){
   FILE *file = fopen(path, "r");
@@ -55,7 +71,9 @@ bool fileExists(char* path){
   }
 }
   
-void CompareCombineSave(PpmBuffer* stored, PpmBuffer* generated, const char* path){
+void CompareCombineSave(PpmBuffer* stored, PpmBuffer* generated,
+			const char* path,
+			const char* fileName){
   PpmBuffer result;
   int width = stored->pxWidth;
   int height = stored->pxHeight;
@@ -68,11 +86,10 @@ void CompareCombineSave(PpmBuffer* stored, PpmBuffer* generated, const char* pat
   if (result.buffer == NULL) {
     return;
   }
-
   
   ppmbuffer_compare_combine(stored, generated, &result);
+  ppmbuffer_save_path_name(path,fileName, &result);
   
-  ppmbuffer_save(path, &result);
   free(result.buffer);
 }
 
@@ -148,6 +165,14 @@ RenderTestContext* create_context(const char* test_name){
   // note: assume test_name < 256;
   strcpy(ctx->test_name, test_name);
 
+  
+  // todo: consider more robost
+  #ifdef SIMD
+  strcpy(ctx->defines, "SIMD");
+  #else
+  strcpy(ctx->defines, "default");
+  #endif
+
   return ctx;
 }
 
@@ -179,28 +204,38 @@ void render_test_scene_depth(RenderTestContext* ctx){
 
 // consider: exposing more verbosed fail reason
 bool validate_test_result(RenderTestContext* ctx){
-  char path[256];
-  pathToScreenshotFromName(path, ctx->test_name);
+  char folder[256];
+  pathToScreenshotFromContex(folder, ctx);
+
+  char fullPath[256];
+  pathToScreenshotFromContextFull(fullPath, ctx);
+
+  char fileName[256];
+  fileNameFromContext(fileName, ctx);
   
-  if(!fileExists(path)) {
-    printf("Missing reference screnshot, wrigin generated:%s\n", path);
-    ppmbuffer_save(path, &(ctx->generated));
+  if(!fileExists(fullPath)) {
+    printf("Missing reference screnshot, wrigin generated:%s\n", fullPath);
+    ppmbuffer_save_path_name(folder, fileName , &(ctx->generated));
     return false;
   }
 
-  if(!ppmbuffer_load_into(path, &(ctx->loaded))){
-    printf("Reference screnshot, failed to load\n");
+  if(!ppmbuffer_load_into(fullPath, &(ctx->loaded))){
+    printf("Reference screnshot, failed to load: %s\n",fullPath);
     return false;
   }
 
   int diff = ppmbuffer_same_px (&(ctx->loaded), &(ctx->generated)); 
-  //  bool image_are_same = ppmbuffer_same(&(ctx->loaded), &(ctx->generated));
   bool image_are_same = diff < TEST_TOLERANCE_PIXEL;
   if(!image_are_same){
-    pathToFailedScreenshotFromName(path, ctx->test_name);
+    char failedPath[256];
+    char name[256];
+
+    pathToFailedFolderFromContext(failedPath, ctx);
+    fileNameFromContext(name, ctx);
+       
     CompareCombineSave(&(ctx->loaded),
-		   &(ctx->generated),
-    		   path);
+		       &(ctx->generated),
+		       failedPath, name);
   }
 
   return image_are_same;    
