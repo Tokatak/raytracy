@@ -9,14 +9,19 @@ VARIANTS = scalar simd
 
 
 build:
-# debug
-	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 -msse3 -o main main.c && ./main.exe
+	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 $(VARIANT_scalar) -o main main.c && ./main.exe
+
+build-simd:
+	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 $(VARIANT_simd) -o main main.c && ./main.exe
 
 depth:
-	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 -msse3 -o main main.c && ./main.exe -d
+	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 ${VARIANT_scalar} -o main main.c && ./main.exe -d
+
+depth-simd:
+	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 ${VARIANT_simd} -o main main.c && ./main.exe -d
 
 optimized:
-	gcc -ffast-math  -Wall -Wextra -Wpedantic -O3  -march=native -msse3 -o main main.c && ./main.exe
+	gcc -ffast-math  -Wall -Wextra -Wpedantic -O3  -march=native ${VARIANT_scalar} -o main main.c && ./main.exe
 
 msvc:
 	cl /Zi /DEBUG /EHsc main.c && main.exe

@@ -447,13 +447,14 @@ RaySphereIntersection intersectRaySphereClosest(const V3 O, const V3 D, const fl
 						const float t_max,const  Sphere* restrict spheres,
 						const int sphereCount);
 
+#ifdef SIMD
 RaySphereIntersection intersectRaySphereBatched(const V3 O,
 						const DirectionBuffer directionBuffer,
 						const size_t startAt,
 						const SphereBuffer sphereBuffer,	       
 						float t_min, float t_max,
 						const Sphere* spheres);
-
+#endif 
 
 
 static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){
@@ -509,6 +510,7 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
 // batched rays and sphere
 
 
+#ifdef SIMD
 RaySphereIntersection intersectRaySphereBatched(const V3 O,
 						const DirectionBuffer directionBuffer,
 						const size_t startAt,
@@ -685,6 +687,7 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   return result;
 }
 
+#endif
 
 RaySphereIntersection intersectRaySphereClosest(const V3 O, const V3 D, const float t_min,
 						const float t_max,const  Sphere* restrict spheres,
@@ -774,12 +777,6 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
 		      const Sphere* spheres, int sphereCount,
 		      Light* lights, int lightCount);
 
-float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
-			   const Sphere* spheres,
-			   // const float t_min_2,const float t_max_2,const int recursion_depth_2,
-			   const SphereBuffer sphereBuffer,
-			   const LightBuffer lightbuffer
-			   );
 
 V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 	     const Sphere* spheres, int sphereCount,
@@ -788,6 +785,14 @@ V3 traceRay( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 V3 traceRayDepth( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 		  const Sphere* spheres, int sphereCount,
 		  Light* lights, int lightCount);
+
+#ifdef SIMD
+float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
+			   const Sphere* spheres,
+			   // const float t_min_2,const float t_max_2,const int recursion_depth_2,
+			   const SphereBuffer sphereBuffer,
+			   const LightBuffer lightbuffer
+			   );
 
 V3 traceRayBatch(
 		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
@@ -815,6 +820,7 @@ V3 traceRayBatchDepth (
 		   const SphereBuffer sphereBuffer,
 		   const LightBuffer lightbuffer
 		   );
+#endif
 
 
 void setPixelTexture(float x, float y, V3 color, Buffer *buffer);
@@ -837,7 +843,7 @@ void packLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict l
 int logcount = 10;
 int logs = 0;
 
-#ifndef SCALAR 
+#ifdef SIMD
 float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 			   const Sphere* spheres,
 			   // const float t_min_2,const float t_max_2,const int recursion_depth_2,
@@ -1308,7 +1314,7 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
  }
 
 
-#ifndef SCALAR
+#ifdef SIMD
 // todo: cleanup legacy arguments
 V3 traceRayBatch(
 		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
@@ -1442,6 +1448,7 @@ V3 traceRayBatch(
 }
 #endif
 
+#ifdef SIMD
 V3 traceRayBatchDepth(
 		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 		   const Sphere* spheres, int sphereCount,
@@ -1489,6 +1496,7 @@ V3 traceRayBatchDepth(
 
   return closestSphere->color;
 }
+#endif
 
 void setPixelTexture(float x, float y, V3 color, Buffer *buffer) {
   int byteOffset = (x + buffer->width * y) * 3;
@@ -1796,8 +1804,9 @@ void fillRegion
 		     t_min, t_max, recursion_depth,
 		     spheres,  sphereCount,
 		     lights, lightCount);
-    #else 
+    #endif
 
+    #ifdef SIMD
     color = traceRayBatch(
 		   origin,
 		   (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
@@ -1920,8 +1929,8 @@ void fillRegionDepth
       bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0;
     }
   }
-    
-#else // non SCALAR
+#endif     
+#ifdef SIMD
     V3 defaultcolor =(V3){0.0f,0.0f,0.0f};
     for ( size_t index = 0; index< pixelCount; index++){
       RaySphereIntersection intersection = intersectRaySphereBatched(origin,
