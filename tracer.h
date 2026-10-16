@@ -171,7 +171,6 @@ bool ppmbuffer_same(const PpmBuffer* restrict abuffer,const PpmBuffer* restrict 
     return true;
 }
 
-// todo : better heirustic for difference
 int ppmbuffer_same_px(const PpmBuffer* restrict abuffer,const PpmBuffer* restrict bbuffer){
   int diff = 0;
     if (!abuffer || !bbuffer) {
@@ -276,11 +275,11 @@ bool ppmbuffer_compare_combine(PpmBuffer* abuffer, PpmBuffer* bbuffer, PpmBuffer
 
 #endif
 
-//todo: consider prettify 
+#ifdef SIMD
+
 #ifndef m128V3
 #define m128V3
 
-// todo: better guard
 #include <immintrin.h>
 
 
@@ -311,7 +310,8 @@ float m128_reduce( const __m128 a, const __m128 b)
     return _mm_cvtss_f32( sum);
 }
 
-#endif
+#endif  // m128V3
+#endif  // SIMD
 
 
 #ifndef V3_H
@@ -636,8 +636,6 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
       //ff ff ff
       hit_mask = _mm_or_ps(hit_mask, max_mask);
       hit_mask = _mm_or_ps(hit_mask, min_mask);
-
-      // todo: trace what happens with D<0
 
       // r_batch
       // distance values
@@ -1030,10 +1028,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
       __m128 reflectedZ = _mm_mul_ps(twoNdot,Nz);
       reflectedZ = _mm_sub_ps(reflectedZ,Lz);
 
-
       /*float rDotV = v3_dot( Reflection, View); */
-      //Vx,Vy,vz
-      //todo: update all to m128_dot
       __m128 rdotM128 = m128_dot(reflectedX, reflectedY, reflectedZ,
 				Vx,Vy,Vz);
       __m128 rdotM128positive = _mm_max_ps(rdotM128, zero);
