@@ -806,18 +806,16 @@ V3 traceRayBatch(
 		   );
 
 
-V3 traceRayBatchDepth (
-		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
-		   const Sphere* spheres, int sphereCount,
-		   Light* lights, int lightCount,
-
-		   const V3 Origin,
+V3 traceRayBatchDepth(
+		   V3 O, float t_min, float t_max, 
+		   const Sphere* spheres,		  
 		   const DirectionBuffer directionBuffer,
-		   const size_t startAt,const size_t batchSize,
-		   const int recursion_depth_2,
-		   const SphereBuffer sphereBuffer,
-		   const LightBuffer lightbuffer
-		   );
+		   // todo: propper handling
+		   const size_t startAt, 
+		   const SphereBuffer sphereBuffer
+		   // todo: consider
+		   //		   ,ColorBuffer* const result
+		      );
 #endif
 
 
@@ -1422,7 +1420,7 @@ V3 traceRayBatch(
 		  lights,  lightCount,
 		  P,
 		  recursive_directions,
-		  // todo: 1 at a time? 
+		  // tod:o 1 at a time? 
 		  0,
 		  // todo: 1 at a time? 
 		  1,
@@ -1445,32 +1443,26 @@ V3 traceRayBatch(
 
 #ifdef SIMD
 V3 traceRayBatchDepth(
-		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
-		   const Sphere* spheres, int sphereCount,
-		   Light* lights, int lightCount,
-
-		   const V3 Origin,
+		   V3 O, float t_min, float t_max, 
+		   const Sphere* spheres,		  
 		   const DirectionBuffer directionBuffer,
-
 		   // todo: propper handling
-		   const size_t startAt,const size_t batchSize,
-		   const int recursion_depth_2,
-		   const SphereBuffer sphereBuffer,
-		   const LightBuffer lightBuffer
+		   const size_t startAt, 
+		   const SphereBuffer sphereBuffer
 		   // todo: consider
 		   //		   ,ColorBuffer* const result
 		   ){
 
   //todo: remove after batch is implemented
-  (void)Origin;
-  (void)batchSize;
-  (void)recursion_depth;
-  (void)sphereCount;
-  (void)lights;
-  (void)lightCount;
-  (void)lightBuffer;
-  (void)recursion_depth_2;
-  (void)D;
+  /* (void)Origin; */
+  /* (void)batchSize; */
+  /* (void)recursion_depth; */
+  /* (void)sphereCount; */
+  /* (void)lights; */
+  /* (void)lightCount; */
+  /* (void)lightBuffer; */
+  /* (void)recursion_depth_2; */
+  /* (void)D; */
   
   /* float closest_t = BIG_NUMBER; */
   const Sphere *closestSphere = NULL;
