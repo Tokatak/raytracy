@@ -1770,6 +1770,7 @@ void fillRegion
   packLightBuffer(&lightBuffer, lightCount, lights);
 
   // todo: remove
+  // scalar depends on original sphere array
   for( int i=0; i< sphereCount; i++){
     float r = spheres[i].radius;
     spheres[i]._rr = r*r;
