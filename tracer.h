@@ -601,7 +601,7 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
       // cmpge
       // a <= b ? 0xFF : 0
       // disc < 0 ? 0xFF : 0
-      hit_mask = _mm_cmple_ps(disc, zero); 
+      hit_mask = _mm_cmplt_ps(disc, zero); 
 
       disc = _mm_sqrt_ps(disc);
 
