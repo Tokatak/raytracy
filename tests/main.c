@@ -7,13 +7,21 @@
 #ifndef test_context_h
 #define test_context_h
 
+#ifndef DEFAULT_SPHERE_CAPACITY
+  #define DEFAULT_SPHERE_CAPACITY 16
+#endif
+
+#ifndef DEFAULT_LIGHT_CAPACITY
+  #define DEFAULT_LIGHT_CAPACITY 16
+#endif
+
 typedef struct{
   PpmBuffer generated;
   PpmBuffer loaded;
   Buffer render_buffer;
-  Sphere spheres[4];
+  Sphere spheres[DEFAULT_SPHERE_CAPACITY];
   int sphere_count;
-  Light lights[3];
+  Light lights[DEFAULT_LIGHT_CAPACITY];
   int light_count;
   char test_name[256];
   char defines[256];
@@ -94,12 +102,21 @@ void CompareCombineSave(PpmBuffer* stored, PpmBuffer* generated,
 }
 
 const Sphere DEFAULT_SPHERES[] = {
+  /* // position */
+  /* {{0, -1, 3}, 1, {255, 0, 0}, 500, 0.2}, */
+  /* /\* {{0,  1, 3}, 1, {255, 0, 0}, 500, 0.2}, *\/ */
+  /* {{2, 0, 4}, 1, {0, 0, 255}, 500, 0.3}, */
+  /* {{-2, 0, 4}, 1, {0, 255, 0}, 10, 0.4}, */
+  /* {{0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.5}, */
+  
   // position
-  {{0, -1, 3}, 1, {255, 0, 0}, 500, 0.2},
-  /* {{0,  1, 3}, 1, {255, 0, 0}, 500, 0.2}, */
-  {{2, 0, 4}, 1, {0, 0, 255}, 500, 0.3},
-  {{-2, 0, 4}, 1, {0, 255, 0}, 10, 0.4},
-  {{0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.5},
+  {{0, -1, 3}, 1, {255, 0, 0}, 500, 0.2, 0},
+    
+  {{0, 1, 3}, 1, {255, 0, 0}, 500, 0.2, 0},
+    
+  {{2, 0, 4}, 1, {0, 0, 255}, 500, 0.3, 0},
+  {{-2, 0, 4}, 1, {0, 255, 0}, 10, 0.4, 0},
+  {{0, -5001, 0}, 5000, {255, 255, 0}, 1000, 0.5, 0},
 };
 
 const Light DEFAULT_LIGHTS[] = {
@@ -158,10 +175,11 @@ RenderTestContext* create_context(const char* test_name){
   prepare_renderBuffer(&(ctx->render_buffer),&(ctx->generated));
 
   memcpy(ctx->spheres, DEFAULT_SPHERES, sizeof(DEFAULT_SPHERES));
-  ctx->sphere_count = 4;
+  ctx->sphere_count = sizeof(DEFAULT_SPHERES)/sizeof(DEFAULT_SPHERES[0]);
   
   memcpy(ctx->lights, DEFAULT_LIGHTS, sizeof(DEFAULT_LIGHTS));
-  ctx->light_count = 3;
+  ctx->light_count = sizeof(DEFAULT_LIGHTS)/sizeof(DEFAULT_LIGHTS[0]);
+  
 
   // note: assume test_name < 256;
   strcpy(ctx->test_name, test_name);

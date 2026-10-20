@@ -1509,26 +1509,6 @@ void setPixelCanvas(float x, float y, V3 color, Buffer *buffer) {
                   buffer);
 }
 
-void printSphereBuffer(const SphereBuffer* sb) {
-    printf("SphereBuffer: count=%zu, padded=%zu\n",
-           sb->count, ((sb->count + 3) / 4) * 4);
-    printf("  idx |     position           | radius |   color            | spec | refl |   rr\n");
-    printf("  ----+------------------------+--------+--------------------+------+------+---------\n");
-
-    size_t padded = ((sb->count + 3) / 4) * 4;
-    for (size_t i = 0; i < padded; i++) {
-        const char* marker = (i >= sb->count) ? " (pad)" : "";
-        printf("  %3zu | %7.2f %7.2f %7.2f | %6.2f | %4.0f %4.0f %4.0f | %4.0f | %4.2f | %9.2f%s\n",
-               i,
-               sb->x[i], sb->y[i], sb->z[i],
-               sb->radius[i],
-               sb->r[i], sb->g[i], sb->b[i],
-               sb->specular[i], sb->reflective[i],
-               sb->rr[i],
-               marker);
-    }
-}
-
 void packSphereBuffer(SphereBuffer* sphereBuffer, int sphereCount, Sphere* restrict spheres){
     // todo: 4 floats for now, but consider more
   int paddedSphereCount = ((sphereCount +3)/4)*4;
@@ -1562,8 +1542,6 @@ void packSphereBuffer(SphereBuffer* sphereBuffer, int sphereCount, Sphere* restr
     sphereBuffer->specular[i] = s.specular;
     sphereBuffer->reflective[i] = s.reflective;    
   }
-
-  /* printSphereBuffer(sphereBuffer); */
 }
 
 void freeSphereBuffer(SphereBuffer* buffer){
@@ -1747,6 +1725,7 @@ void freeDirectionBuffer(DirectionBuffer* buffer){
   free(buffer->z);
 }
 
+
 // todo: make sure to run simd and scalar test version
 void fillRegion
 ( Region region, Camera camera,
@@ -1754,7 +1733,7 @@ void fillRegion
   float t_min, float t_max, int recursion_depth,
   Sphere* restrict spheres, int sphereCount,
   Light* restrict lights, int lightCount)
-{
+{  
   V3 origin = camera.position;
   V3 cameraDirection = camera.direction;
   int targetBufferColorComponents = layout.components;
@@ -1798,7 +1777,7 @@ void fillRegion
     float r = spheres[i].radius;
     spheres[i]._rr = r*r;
   }
-
+  
   SphereBuffer sphereBuffer ={0};
   packSphereBuffer(&sphereBuffer, sphereCount, spheres);
 
