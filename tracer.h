@@ -765,6 +765,14 @@ typedef struct {
   float projectionPlane;
 } Camera;
 
+typedef struct {
+    float x[4];
+    float y[4];
+    float z[4];
+} Lanes4F;
+
+Lanes4F shadow_dirs;
+
 static const PixelLayout PIXEL_LAYOUT_RGB = {3, -1, 0, 1, 2};
 static const PixelLayout PIXEL_LAYOUT_BGR = {3, -1, 2, 1, 0};
 static const PixelLayout PIXEL_LAYOUT_RGBA = {4, 3, 0, 1, 2};
@@ -810,7 +818,6 @@ V3 traceRayBatchDepth(
 		   V3 O, float t_min, float t_max, 
 		   const Sphere* spheres,		  
 		   const DirectionBuffer directionBuffer,
-		   // todo: propper handling
 		   const size_t startAt, 
 		   const SphereBuffer sphereBuffer
 		   // todo: consider
@@ -850,20 +857,18 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
   float intensity = 0.0;
 
   float N_len = v3_len(N);
-  
+
   __m128 Vx = _mm_set1_ps(View.x);
   __m128 Vy = _mm_set1_ps(View.y);
   __m128 Vz = _mm_set1_ps(View.z);
 
-  // todo: handle allocation
-  float x_buffer[4];
-  float y_buffer[4];
-  float z_buffer[4];
+  // using tmp value - shadow_dirs, reuse in this method
+  // bad practice
   DirectionBuffer lightDirectionBuffer ={0};
   lightDirectionBuffer.count = 1;
-  lightDirectionBuffer.x = x_buffer;
-  lightDirectionBuffer.y = y_buffer;
-  lightDirectionBuffer.z = z_buffer;
+  lightDirectionBuffer.x = shadow_dirs.x;
+  lightDirectionBuffer.y = shadow_dirs.y;
+  lightDirectionBuffer.z = shadow_dirs.z;
 
 
 #ifdef _AMBIENT
@@ -950,9 +955,9 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     Ly = _mm_sub_ps(Ly, Py);
     Lz = _mm_sub_ps(Lz, Pz);
 
-    _mm_storeu_ps(x_buffer, Lx);
-    _mm_storeu_ps(y_buffer, Ly);
-    _mm_storeu_ps(z_buffer, Lz);
+    _mm_storeu_ps(shadow_dirs.x, Lx);
+    _mm_storeu_ps(shadow_dirs.y, Ly);
+    _mm_storeu_ps(shadow_dirs.z, Lz);
     
     RaySphereIntersection intersection = intersectRaySphereBatched(P,
 								   lightDirectionBuffer,
@@ -1065,9 +1070,9 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     // todo consider increasing
     // lightDirectionBuffer.count = 1;
 
-    _mm_storeu_ps(x_buffer, Lx);
-    _mm_storeu_ps(y_buffer, Ly);
-    _mm_storeu_ps(z_buffer, Lz);
+    _mm_storeu_ps(shadow_dirs.x, Lx);
+    _mm_storeu_ps(shadow_dirs.y, Ly);
+    _mm_storeu_ps(shadow_dirs.z, Lz);
     
     RaySphereIntersection intersection = intersectRaySphereBatched(P,
 								   lightDirectionBuffer,
