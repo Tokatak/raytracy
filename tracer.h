@@ -1006,18 +1006,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     sum = _mm_hadd_ps(sum, sum);
     intensity += _mm_cvtss_f32(sum);
     
-
-    /* /\* // todo: check if possible to test against several spheres, *\/ */
-    /* /\* // this would update this line *\/ */
     if ( s!= -1) {
-        /* ReflectRay(N,L,&Reflection); */
-	/* static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){ */
-	/*   const float twoNDotl = 2*v3_dot(R,N); */
-	/*   result->x = twoNDotl*N.x-R.x; */
-	/*   result->y = twoNDotl*N.y-R.y; */
-	/*   result->z = twoNDotl*N.z-R.z; */
-	/* } */
-
       __m128 twoNdot = m128_dot( Nx, Ny, Nz,
 			  Lx, Ly, Lz);
       twoNdot = _mm_mul_ps(twoNdot, _mm_set1_ps(2.0));
