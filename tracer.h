@@ -1313,7 +1313,7 @@ V3 traceRayBatch(
 
 		   // todo: propper handling
 		   const size_t startAt,const size_t batchSize,
-		   const int recursion_depth_2,
+		   const int recursion_depth,
 		   const SphereBuffer sphereBuffer,
 		   const LightBuffer lightBuffer
 		   // todo: consider
@@ -1367,7 +1367,7 @@ V3 traceRayBatch(
   
   float light = ComputeLightingBatch ( P,  N, v, closestSphere->specular,
 				       spheres,
-				       // t_min_2, t_max_2, recursion_depth_2,
+				       // t_min_2, t_max_2, recursion_depth,
 				       sphereBuffer,
 				       lightBuffer
 				       ); 
@@ -1378,7 +1378,7 @@ V3 traceRayBatch(
   local_color.z *= light;
 
   float reflective = closestSphere->reflective;
-  if ( recursion_depth_2 <= 0 || reflective <=0 ){
+  if ( recursion_depth <= 0 || reflective <=0 ){
     return local_color;
   }
 
@@ -1418,7 +1418,7 @@ V3 traceRayBatch(
 		  1,
 		   
 		  // EPSILON, BIG_NUMBER,
-		  recursion_depth_2-1,
+		  recursion_depth-1,
 		  sphereBuffer,
 		  lightBuffer
 		  );
@@ -1445,17 +1445,6 @@ V3 traceRayBatchDepth(
 		   //		   ,ColorBuffer* const result
 		   ){
 
-  //todo: remove after batch is implemented
-  /* (void)Origin; */
-  /* (void)batchSize; */
-  /* (void)recursion_depth; */
-  /* (void)sphereCount; */
-  /* (void)lights; */
-  /* (void)lightCount; */
-  /* (void)lightBuffer; */
-  /* (void)recursion_depth_2; */
-  /* (void)D; */
-  
   /* float closest_t = BIG_NUMBER; */
   const Sphere *closestSphere = NULL;
 
