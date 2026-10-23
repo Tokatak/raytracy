@@ -801,7 +801,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 			   );
 
 V3 traceRayBatch(
-		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
+		   V3 O, V3 D, float t_min, float t_max,
 		   const Sphere* spheres, int sphereCount,
 		   Light* lights, int lightCount,
 
@@ -1304,7 +1304,7 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
 #ifdef SIMD
 // todo: cleanup legacy arguments
 V3 traceRayBatch(
-		   V3 O, V3 D, float t_min, float t_max, int recursion_depth,
+		   V3 O, V3 D, float t_min, float t_max,
 		   const Sphere* spheres, int sphereCount,
 		   Light* lights, int lightCount,
 
@@ -1323,7 +1323,6 @@ V3 traceRayBatch(
   //todo: remove after batch is implemented
   (void)Origin;
   (void)batchSize;
-  (void)recursion_depth_2;
   
   float closest_t = BIG_NUMBER;
   const Sphere *closestSphere = NULL;
@@ -1379,7 +1378,7 @@ V3 traceRayBatch(
   local_color.z *= light;
 
   float reflective = closestSphere->reflective;
-  if ( recursion_depth <= 0 || reflective <=0 ){
+  if ( recursion_depth_2 <= 0 || reflective <=0 ){
     return local_color;
   }
 
@@ -1409,7 +1408,6 @@ V3 traceRayBatch(
     traceRayBatch(
 		  P, R,
 		  EPSILON, BIG_NUMBER,
-		  recursion_depth-1,
 		  spheres,  sphereCount,
 		  lights,  lightCount,
 		  P,
@@ -1794,7 +1792,7 @@ void fillRegion
     color = traceRayBatch(
 		   origin,
 		   (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
-		   t_min, t_max, recursion_depth,
+		   t_min, t_max,
 		   spheres,  sphereCount,
 		    lights, lightCount,
 
