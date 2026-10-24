@@ -795,7 +795,6 @@ V3 traceRayDepth( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 #ifdef SIMD
 float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 			   const Sphere* spheres,
-			   // const float t_min_2,const float t_max_2,const int recursion_depth_2,
 			   const SphereBuffer sphereBuffer,
 			   const LightBuffer lightbuffer
 			   );
@@ -1110,18 +1109,7 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
     sum = _mm_hadd_ps(sum, sum);
     intensity += _mm_cvtss_f32(sum);
     
-
-    /* /\* // todo: check if possible to test against several spheres, *\/ */
-    /* /\* // this would update this line *\/ */
     if ( s!= -1) {
-        /* ReflectRay(N,L,&Reflection); */
-	/* static inline void ReflectRay(const V3 N,const V3 R,V3* const restrict result){ */
-	/*   const float twoNDotl = 2*v3_dot(R,N); */
-	/*   result->x = twoNDotl*N.x-R.x; */
-	/*   result->y = twoNDotl*N.y-R.y; */
-	/*   result->z = twoNDotl*N.z-R.z; */
-	/* } */
-
       __m128 twoNdot = m128_dot( Nx, Ny, Nz,
 			  Lx, Ly, Lz);
       twoNdot = _mm_mul_ps(twoNdot, _mm_set1_ps(2.0));
@@ -1321,7 +1309,6 @@ V3 traceRayBatch(
 		   ){
 
   //todo: remove after batch is implemented
-  (void)Origin;
   (void)batchSize;
   
   float closest_t = BIG_NUMBER;
@@ -1444,8 +1431,6 @@ V3 traceRayBatchDepth(
 		   // todo: consider
 		   //		   ,ColorBuffer* const result
 		   ){
-
-  /* float closest_t = BIG_NUMBER; */
   const Sphere *closestSphere = NULL;
 
   RaySphereIntersection intersection = intersectRaySphereBatched(O,
@@ -1455,8 +1440,6 @@ V3 traceRayBatchDepth(
 								 t_min,  t_max,
 								 spheres);    
   closestSphere = intersection.sphere;
-  /* closest_t = intersection.t1; */
-
 
   if( closestSphere == NULL ){
     return DEFAULT_COLOR;
@@ -1491,7 +1474,7 @@ void setPixelCanvas(float x, float y, V3 color, Buffer *buffer) {
 }
 
 void packSphereBuffer(SphereBuffer* sphereBuffer, int sphereCount, Sphere* restrict spheres){
-    // todo: 4 floats for now, but consider more
+  // todo: 4 floats for now, but consider more
   int paddedSphereCount = ((sphereCount +3)/4)*4;
   sphereBuffer->x = malloc(sizeof(float_t)*paddedSphereCount);
   sphereBuffer->y = malloc(sizeof(float_t)*paddedSphereCount);
@@ -1656,21 +1639,21 @@ void packDirections( DirectionBuffer* directionsBuffer,
 
   // todo: consider faield allocation 
   //todo: consider alligned alocations
-/* #ifdef __AVX2__ */
-/* #define SIMD_ALIGNMENT 32  // AVX2 needs 32-byte alignment */
-/* #elif ____ */
-/* #define SIMD_ALIGNMENT 16  // SSE needs 16-byte alignment */
-/* #else */
-/* #define SIMD_ALIGNMENT 8   // Default */
-/* #endif */
+  /* #ifdef __AVX2__ */
+  /* #define SIMD_ALIGNMENT 32  // AVX2 needs 32-byte alignment */
+  /* #elif ____ */
+  /* #define SIMD_ALIGNMENT 16  // SSE needs 16-byte alignment */
+  /* #else */
+  /* #define SIMD_ALIGNMENT 8   // Default */
+  /* #endif */
 
-/*   // Allocate aligned memory for faster SIMD loads */
-/*   directionsBuffer->x = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
-/* 					 sizeof(float_t) * pixelCount); */
-/*   directionsBuffer->y = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
-/* 					 sizeof(float_t) * pixelCount); */
-/*   directionsBuffer->z = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
-/* 					 sizeof(float_t) * pixelCount); */
+  /*   // Allocate aligned memory for faster SIMD loads */
+  /*   directionsBuffer->x = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
+  /* 					 sizeof(float_t) * pixelCount); */
+  /*   directionsBuffer->y = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
+  /* 					 sizeof(float_t) * pixelCount); */
+  /*   directionsBuffer->z = (float_t*)aligned_alloc(SIMD_ALIGNMENT,  */
+  /* 					 sizeof(float_t) * pixelCount); */
 
   for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
     const float viewportY = screeenY * normHeight;
@@ -1707,7 +1690,6 @@ void freeDirectionBuffer(DirectionBuffer* buffer){
 }
 
 
-// todo: make sure to run simd and scalar test version
 void fillRegion
 ( Region region, Camera camera,
   Buffer buffer,PixelLayout layout,
@@ -1731,8 +1713,6 @@ void fillRegion
   V3 up = {0, 1, 0};
   V3 right = {0};
 
-  // TODO: re-review
-  // cross
   right.x = up.y * cameraDirection.z - up.z * cameraDirection.y;
   right.y = up.z * cameraDirection.x - up.x * cameraDirection.z;
   right.z = up.x * cameraDirection.y - up.y * cameraDirection.x;
@@ -1767,8 +1747,6 @@ void fillRegion
   
   size_t pixelCount = directionsBuffer.count; 
   for ( size_t index = 0; index< pixelCount; index++){    
-    //todo: provide test runs for scalar and simd
-    /* #define SCALAR */
     #ifdef SCALAR
     color = traceRay(origin,
 		     (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
@@ -1842,8 +1820,6 @@ void fillRegionDepth
   V3 up = {0, 1, 0};
   V3 right = {0};
 
-  // TODO: re-review
-  // cross
   right.x = up.y * cameraDirection.z - up.z * cameraDirection.y;
   right.y = up.z * cameraDirection.x - up.x * cameraDirection.z;
   right.z = up.x * cameraDirection.y - up.y * cameraDirection.x;
@@ -1879,7 +1855,7 @@ void fillRegionDepth
   // scalar 21-22 fps  0.044s
   // simd  17.5-16 fps 0.056s / 19.4-19.5 fps 0.051 / 16.05  / 14.5
   
-/* #define SCALAR */
+  /* #define SCALAR */
 #ifdef SCALAR
     for ( size_t index = 0; index< pixelCount; index++){    
     //todo: provide test runs for scalar and simd
