@@ -556,11 +556,16 @@ RaySphereIntersection intersectRaySphereBatched(const V3 O,
   const __m128 oy = _mm_set1_ps(O.y);
   const __m128 oz = _mm_set1_ps(O.z);
   
-  for ( size_t sphereBatchOffset = 0; sphereBatchOffset < sphereBuffer.count; sphereBatchOffset+=4 )
+  for ( size_t sphereBatchOffset = 0; sphereBatchOffset < sphereBuffer.count; sphereBatchOffset+=4)
     {
-      // todo: condider indices stored sequentially
+      // alterative seems to be worse:
+      /* indices_batch =  _mm_add_ps(indices_batch, one) */
+      // would end up more confusing since
+      // - needs to be at the end of the cycle ( easy to loose )
       indices_batch = _mm_setr_ps(sphereBatchOffset+0, sphereBatchOffset+1,
                             sphereBatchOffset+2, sphereBatchOffset+3);
+
+
       
       tmp_x = _mm_load_ps(sphereBuffer.x+sphereBatchOffset); //load 4 floats
       tmp_y = _mm_load_ps(sphereBuffer.y+sphereBatchOffset);
