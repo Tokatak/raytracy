@@ -29,7 +29,7 @@ msvc:
 
 # TESTS
 tests-clean:
-	-rm -f ./tests/failed/*
+	-rm -r -f ./tests/failed/*
 tests-build-scalar:
 	gcc -ffast-math -Wall  -I./external/minunit -I./ ./tests/main.c $(VARIANT_scalar) -o test_suite_scalar
 tests-build-simd:
