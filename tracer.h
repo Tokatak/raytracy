@@ -797,6 +797,12 @@ V3 traceRayDepth( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 		  const Sphere* spheres, int sphereCount,
 		  Light* lights, int lightCount);
 
+int traceRayBatchDepthPass(V3 O, DirectionBuffer* directionsBuffer, float t_min, float t_max, int recursion_depth,
+			   const Sphere* spheres, int sphereCount,
+			   Light* lights, int lightCount,
+			   const char* out
+		      );
+
 #ifdef SIMD
 float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
 			   const Sphere* spheres,
@@ -827,6 +833,7 @@ V3 traceRayBatchDepth(
 		   // todo: consider
 		   //		   ,ColorBuffer* const result
 		      );
+
 #endif
 
 
@@ -1292,6 +1299,68 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
 
    return closestSphere->color;
  }
+
+
+/* typedef struct{ */
+/*   float_t* x; */
+/*   float_t* y; */
+/*   float_t* z; */
+/*   size_t count; */
+/* } DirectionBuffer; */
+
+int traceRayDepthPass( V3 O, DirectionBuffer* directionsBuffer, float t_min, float t_max, int recursion_depth,
+		       const Sphere* spheres, int sphereCount,
+		       Light* lights, int lightCount,
+		       const char* out
+		       
+		      /* V3 O, V3 D, float t_min, float t_max, int recursion_depth, */
+		      /* const Sphere* spheres, int sphereCount, */
+		      /* Light* lights, int lightCount, */
+		      /* const char* out */
+		      ){
+  (void)lights;
+  (void)lightCount;
+  (void)recursion_depth;
+
+  const Sphere *closestSphere = NULL;
+
+  size_t directions = directionsBuffer->count;
+  V3 color = {0};
+  V3 D  = {0};
+  
+  for ( size_t index = 0; index< directions; index++){
+    D.x = *(directionsBuffer->x + index);
+    D.y = *(directionsBuffer->y + index);
+    D.z = *(directionsBuffer->z + index);
+    
+    RaySphereIntersection intersection = intersectRaySphereClosest(O, D, t_min, t_max, spheres, sphereCount);
+    closestSphere = intersection.sphere;
+
+    if( closestSphere == NULL ){
+      color = DEFAULT_COLOR;
+    }
+
+    color = closestSphere->color;
+
+    // continue here
+    // todo: pach color into out
+  }
+    
+    /* const int byteOffset = index * targetBufferColorComponents; */
+    /* bufferStart[byteOffset + layout.r_offset] = */
+    /*   (unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x)); */
+    /* bufferStart[byteOffset + layout.g_offset] = */
+    /*   (unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y)); */
+    /* bufferStart[byteOffset + layout.b_offset] = */
+    /*   (unsigned char)(color.z > 255.0f ? 255.0f : (color.z < 0.0f ? 0.0f : color.z)); */
+
+    /* if ( targetBufferColorComponents >3 ) { */
+    /*   bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0; */
+    /* } */
+  
+
+  return 0;   
+}
 
 
 #ifdef SIMD
@@ -1813,8 +1882,6 @@ void fillRegionDepth
   V3 cameraDirection = camera.direction;
   int targetBufferColorComponents = layout.components;
 
-  V3 color = {0};
-
   int width = buffer.width;
   int height = buffer.height;
 
@@ -1855,7 +1922,8 @@ void fillRegionDepth
 
   DirectionBuffer directionsBuffer = {0};
   packDirections(&directionsBuffer, camera, width, height, actualUp, region, right);
-  
+
+  V3 color = {0};
   size_t pixelCount = directionsBuffer.count;
   // scalar 21-22 fps  0.044s
   // simd  17.5-16 fps 0.056s / 19.4-19.5 fps 0.051 / 16.05  / 14.5
@@ -1863,9 +1931,10 @@ void fillRegionDepth
   /* #define SCALAR */
 #ifdef SCALAR
     for ( size_t index = 0; index< pixelCount; index++){    
-    //todo: provide test runs for scalar and simd
     color = traceRayDepth(origin,
-		     (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
+		     (V3){directionsBuffer.x[index],
+			  directionsBuffer.y[index],
+			  directionsBuffer.z[index]},			  
 		     t_min, t_max, recursion_depth,
 		     spheres,  sphereCount,
 		     lights, lightCount);   
