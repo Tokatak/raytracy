@@ -1360,6 +1360,7 @@ void traceRayDepthPass( V3 O, DirectionBuffer* directionsBuffer,
   return ;
 }
 
+// todo: swzzizzle'em all
 void swizzle( unsigned char* const restrict source,
 	     unsigned char* const restrict target,
 	     const int pixelCount,
