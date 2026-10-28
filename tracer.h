@@ -797,11 +797,17 @@ V3 traceRayDepth( V3 O, V3 D, float t_min, float t_max, int recursion_depth,
 		  const Sphere* spheres, int sphereCount,
 		  Light* lights, int lightCount);
 
-int traceRayBatchDepthPass(V3 O, DirectionBuffer* directionsBuffer, float t_min, float t_max, int recursion_depth,
+void  traceRayBatchDepthPass(V3 O, DirectionBuffer* directionsBuffer, float t_min, float t_max, int recursion_depth,
 			   const Sphere* spheres, int sphereCount,
 			   Light* lights, int lightCount,
-			   const char* out
+			   unsigned char* out
 		      );
+
+void swizzle( unsigned char* const source,
+	     unsigned char* const target,
+	     const int pixelCount,
+	     const int targetBufferColorComponents,
+	     const PixelLayout targetLayout);
 
 #ifdef SIMD
 float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
@@ -1308,10 +1314,12 @@ float ComputeLighting(V3 P, V3 N, V3 View, float s,
 /*   size_t count; */
 /* } DirectionBuffer; */
 
-int traceRayDepthPass( V3 O, DirectionBuffer* directionsBuffer, float t_min, float t_max, int recursion_depth,
+void traceRayDepthPass( V3 O, DirectionBuffer* directionsBuffer,
+		       float t_min, float t_max,
+		       int recursion_depth,
 		       const Sphere* spheres, int sphereCount,
 		       Light* lights, int lightCount,
-		       const char* out
+		       unsigned char* out
 		       
 		      /* V3 O, V3 D, float t_min, float t_max, int recursion_depth, */
 		      /* const Sphere* spheres, int sphereCount, */
@@ -1338,29 +1346,42 @@ int traceRayDepthPass( V3 O, DirectionBuffer* directionsBuffer, float t_min, flo
 
     if( closestSphere == NULL ){
       color = DEFAULT_COLOR;
+    } else {
+      color = closestSphere->color;
     }
 
-    color = closestSphere->color;
-
-    // continue here
-    // todo: pach color into out
+    // targetBufferColorComponents;
+    int byteOffset = index * 3;
+    out[byteOffset + 0] = color.x;
+    out[byteOffset + 1] = color.y;
+    out[byteOffset + 2] = color.z;   
   }
-    
-    /* const int byteOffset = index * targetBufferColorComponents; */
-    /* bufferStart[byteOffset + layout.r_offset] = */
-    /*   (unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x)); */
-    /* bufferStart[byteOffset + layout.g_offset] = */
-    /*   (unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y)); */
-    /* bufferStart[byteOffset + layout.b_offset] = */
-    /*   (unsigned char)(color.z > 255.0f ? 255.0f : (color.z < 0.0f ? 0.0f : color.z)); */
 
-    /* if ( targetBufferColorComponents >3 ) { */
-    /*   bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0; */
-    /* } */
-  
-
-  return 0;   
+  return ;
 }
+
+void swizzle( unsigned char* const restrict source,
+	     unsigned char* const restrict target,
+	     const int pixelCount,
+	     const int targetBufferColorComponents,
+	     const PixelLayout targetLayout){
+  for ( int index = 0; index < pixelCount; index++)
+    {
+      const int sourceOffseet = index *3;
+      const int byteOffset = index * targetBufferColorComponents;
+    
+      target[byteOffset + targetLayout.r_offset] = source[sourceOffseet + 0];
+      target[byteOffset + targetLayout.g_offset] = source[sourceOffseet + 1];
+      target[byteOffset + targetLayout.b_offset] = source[sourceOffseet + 2];
+
+      if ( targetBufferColorComponents >3 ) {
+	target[byteOffset + targetLayout.alpha_offset] = (unsigned char)255.0;
+      }
+    }
+  return;
+}
+
+
 
 
 #ifdef SIMD
@@ -1763,6 +1784,16 @@ void freeDirectionBuffer(DirectionBuffer* buffer){
   free(buffer->z);
 }
 
+void initializeIntermediateBuffer(Buffer* template, Buffer* target){
+  target->width = template->width;
+  target->height = template->height;
+  target->size = target->width * target->height *3; // RGB
+  target->start = malloc(target->size);
+}
+
+void freeIntermediateBuffer(Buffer* buffer){
+  free(buffer->start);
+}
 
 void fillRegion
 ( Region region, Camera camera,
@@ -1886,6 +1917,8 @@ void fillRegionDepth
   int height = buffer.height;
 
   unsigned char* bufferStart = buffer.start;
+  Buffer frameBuffer = {0};
+  initializeIntermediateBuffer(&buffer, &frameBuffer);
   
   // Create a right vector (perpendicular to camera direction)
   // Assuming Y is up
@@ -1923,36 +1956,28 @@ void fillRegionDepth
   DirectionBuffer directionsBuffer = {0};
   packDirections(&directionsBuffer, camera, width, height, actualUp, region, right);
 
-  V3 color = {0};
-  size_t pixelCount = directionsBuffer.count;
+
+   size_t pixelCount = directionsBuffer.count;
   // scalar 21-22 fps  0.044s
   // simd  17.5-16 fps 0.056s / 19.4-19.5 fps 0.051 / 16.05  / 14.5
   
   /* #define SCALAR */
 #ifdef SCALAR
-    for ( size_t index = 0; index< pixelCount; index++){    
-    color = traceRayDepth(origin,
-		     (V3){directionsBuffer.x[index],
-			  directionsBuffer.y[index],
-			  directionsBuffer.z[index]},			  
-		     t_min, t_max, recursion_depth,
-		     spheres,  sphereCount,
-		     lights, lightCount);   
-    const int byteOffset = index * targetBufferColorComponents;
-    bufferStart[byteOffset + layout.r_offset] =
-      (unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x)); 
-    bufferStart[byteOffset + layout.g_offset] =
-      (unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y)); 
-    bufferStart[byteOffset + layout.b_offset] =
-      (unsigned char)(color.z > 255.0f ? 255.0f : (color.z < 0.0f ? 0.0f : color.z));
+  traceRayDepthPass( origin, &directionsBuffer,
+			 t_min, t_max,
+			 recursion_depth,
+			 spheres, sphereCount,
+			 lights, lightCount,
+			 frameBuffer.start
+			 );
 
-    if ( targetBufferColorComponents >3 ) {
-      bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0;
-    }
-  }
+  swizzle( frameBuffer.start, bufferStart,
+	   pixelCount, targetBufferColorComponents,
+	   layout);
 #endif     
 #ifdef SIMD
-    V3 defaultcolor =(V3){0.0f,0.0f,0.0f};
+  V3 color = {0};
+  V3 defaultcolor =(V3){0.0f,0.0f,0.0f};
     for ( size_t index = 0; index< pixelCount; index++){
       RaySphereIntersection intersection = intersectRaySphereBatched(origin,
 								     directionsBuffer,
@@ -1985,6 +2010,7 @@ void fillRegionDepth
   freeSphereBuffer(&sphereBuffer);
   freeLightBuffer(&lightBuffer);
   freeDirectionBuffer(&directionsBuffer);
+  freeIntermediateBuffer(&frameBuffer);
 }
 
 #endif
