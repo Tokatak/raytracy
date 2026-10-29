@@ -1881,7 +1881,7 @@ void fillRegion
 #endif
 
 
-        /* targetBufferColorComponents; */
+    /* targetBufferColorComponents; */
     const int byteOffset = index * 3;
     // todo: check if this should be plain number or normalized and re-normalized in byte
     frameBuffer.start[byteOffset + 0] =
@@ -1890,7 +1890,6 @@ void fillRegion
       (unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y));
     frameBuffer.start[byteOffset + 2] =
       (unsigned char)(color.z > 255.0f ? 255.0f : (color.z < 0.0f ? 0.0f : color.z));
-
   }
 
   swizzle( frameBuffer.start, bufferStart,
@@ -1968,7 +1967,6 @@ void fillRegionDepth
   // scalar 21-22 fps  0.044s
   // simd  17.5-16 fps 0.056s / 19.4-19.5 fps 0.051 / 16.05  / 14.5
   
-  /* #define SCALAR */
 #ifdef SCALAR
   traceRayDepthPass( origin, &directionsBuffer,
 			 t_min, t_max,
@@ -1978,9 +1976,6 @@ void fillRegionDepth
 			 frameBuffer.start
 			 );
 
-  swizzle( frameBuffer.start, bufferStart,
-	   pixelCount, targetBufferColorComponents,
-	   layout);
 #endif     
 #ifdef SIMD
   V3 color = {0};
@@ -1994,22 +1989,24 @@ void fillRegionDepth
 								     spheres);
 
       color = intersection.sphere ? intersection.sphere->color :  defaultcolor;
-      
-      const int byteOffset = index * targetBufferColorComponents;
-      bufferStart[byteOffset + layout.r_offset] =
-	(unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x)); 
-      bufferStart[byteOffset + layout.g_offset] =
-	(unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y)); 
-      bufferStart[byteOffset + layout.b_offset] =
+
+      /* targetBufferColorComponents; */
+      const int byteOffset = index * 3;
+      // todo: check if this should be plain number or normalized and re-normalized in byte
+      frameBuffer.start[byteOffset + 0] =
+	(unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x));
+      frameBuffer.start[byteOffset + 1] =
+	(unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y));
+      frameBuffer.start[byteOffset + 2] =
 	(unsigned char)(color.z > 255.0f ? 255.0f : (color.z < 0.0f ? 0.0f : color.z));
 
-      if ( targetBufferColorComponents >3 ) {
-	bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0;
-      }
     }
 #endif
   
-
+    swizzle( frameBuffer.start, bufferStart,
+	     pixelCount, targetBufferColorComponents,
+	     layout);
+    
   // todo: consider using pthreads
   // for omp paste -fopenmp in gcc compile line
   // #pragma omp parallel for
