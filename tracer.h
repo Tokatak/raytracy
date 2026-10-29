@@ -1789,7 +1789,7 @@ void initializeIntermediateBuffer(Buffer* template, Buffer* target){
   target->width = template->width;
   target->height = template->height;
   target->size = target->width * target->height *3; // RGB
-  target->start = malloc(target->size);
+  target->start = malloc(target->width * target->height *3);
 }
 
 void freeIntermediateBuffer(Buffer* buffer){
@@ -1813,6 +1813,8 @@ void fillRegion
   int height = buffer.height;
 
   unsigned char* bufferStart = buffer.start;
+  Buffer frameBuffer = {0};
+  initializeIntermediateBuffer(&buffer, &frameBuffer);
   
   // Create a right vector (perpendicular to camera direction)
   // Assuming Y is up
@@ -1852,16 +1854,16 @@ void fillRegion
   packDirections(&directionsBuffer, camera, width, height, actualUp, region, right);
   
   size_t pixelCount = directionsBuffer.count; 
-  for ( size_t index = 0; index< pixelCount; index++){    
+  for ( size_t index = 0; index< pixelCount; index++){
     #ifdef SCALAR
     color = traceRay(origin,
 		     (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
 		     t_min, t_max, recursion_depth,
 		     spheres,  sphereCount,
-		     lights, lightCount);
+		     lights, lightCount);    
     #endif
 
-    #ifdef SIMD
+#ifdef SIMD
     color = traceRayBatch(
 		   origin,
 		   (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
@@ -1876,22 +1878,25 @@ void fillRegion
 		   recursion_depth,
 		   sphereBuffer,
 		   lightBuffer);
-    #endif 
+#endif
 
-      
-    const int byteOffset = index * targetBufferColorComponents;
-    bufferStart[byteOffset + layout.r_offset] =
-      (unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x)); 
-    bufferStart[byteOffset + layout.g_offset] =
-      (unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y)); 
-    bufferStart[byteOffset + layout.b_offset] =
+
+        /* targetBufferColorComponents; */
+    const int byteOffset = index * 3;
+    // todo: check if this should be plain number or normalized and re-normalized in byte
+    frameBuffer.start[byteOffset + 0] =
+      (unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x));
+    frameBuffer.start[byteOffset + 1] =
+      (unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y));
+    frameBuffer.start[byteOffset + 2] =
       (unsigned char)(color.z > 255.0f ? 255.0f : (color.z < 0.0f ? 0.0f : color.z));
 
-    if ( targetBufferColorComponents >3 ) {
-      bufferStart[byteOffset + layout.alpha_offset] = (unsigned char)255.0;
-    }
   }
 
+  swizzle( frameBuffer.start, bufferStart,
+	   pixelCount, targetBufferColorComponents,
+	   layout);
+  
   // todo: consider using pthreads
   // for omp paste -fopenmp in gcc compile line
   // #pragma omp parallel for
@@ -1899,6 +1904,7 @@ void fillRegion
   freeSphereBuffer(&sphereBuffer);
   freeLightBuffer(&lightBuffer);
   freeDirectionBuffer(&directionsBuffer);
+  freeIntermediateBuffer(&frameBuffer);
 }
 
 void fillRegionDepth

@@ -168,6 +168,10 @@ void prepare_renderBuffer(Buffer* renderBuffer, PpmBuffer* target){
 }
 
 RenderTestContext* create_context(const char* test_name){
+  // hack: for some reason contecsts are shared
+  // unless printfed
+  // artefacts appper, seems that out frame buffer is not cleared
+  printf(" ");
   RenderTestContext* ctx = calloc(1, sizeof(RenderTestContext));
 
   prepare_ppmBuffer(&(ctx->generated));
@@ -283,7 +287,7 @@ MU_TEST_SUITE(test_suite) {
   
   MU_RUN_TEST(light_ambient);
   MU_RUN_TEST(light_point);
-  MU_RUN_TEST(light_directional);  
+  MU_RUN_TEST(light_directional);
 }
 
 #include "depth.h"
