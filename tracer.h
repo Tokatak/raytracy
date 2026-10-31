@@ -432,7 +432,7 @@ typedef struct{
   V3 color;
   float specular;
   float reflective;
-  float _rr; // r*r pre-storing //todo: validate{
+  float _rr; // r*r pre-storing
 } Sphere;
 
 typedef struct{
@@ -1360,7 +1360,6 @@ void traceRayDepthPass( V3 O, DirectionBuffer* directionsBuffer,
   return ;
 }
 
-// todo: swzzizzle'em all
 void swizzle( unsigned char* const restrict source,
 	     unsigned char* const restrict target,
 	     const int pixelCount,
@@ -1382,11 +1381,7 @@ void swizzle( unsigned char* const restrict source,
   return;
 }
 
-
-
-
 #ifdef SIMD
-// todo: cleanup legacy arguments
 V3 traceRayBatch(
 		   V3 O, V3 D, float t_min, float t_max,
 		   const Sphere* spheres, int sphereCount,
@@ -1617,7 +1612,7 @@ void freeSphereBuffer(SphereBuffer* buffer){
   free(buffer->rr);
 }
 
-// todo: remove debug print
+
 void packLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict lights){
   size_t ambient = 0, point = 0, dir = 0;
   for (int i = 0; i < lightCount; i++) {
@@ -1734,7 +1729,7 @@ void packDirections( DirectionBuffer* directionsBuffer,
   directionsBuffer->z = malloc(sizeof(float_t)*pixelCount);
 
   // todo: consider faield allocation 
-  //todo: consider alligned alocations
+  // todo: consider alligned alocations
   /* #ifdef __AVX2__ */
   /* #define SIMD_ALIGNMENT 32  // AVX2 needs 32-byte alignment */
   /* #elif ____ */
