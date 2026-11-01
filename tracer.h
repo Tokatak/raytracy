@@ -498,8 +498,6 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
 }
 
 //todo: continue here
-// tests - add 5th sphere
-// tests - separate screenshots for variants or tolerance
 
 // reseqrch required
 // timings for :
@@ -1390,8 +1388,7 @@ V3 traceRayBatch(
 		   const V3 Origin,
 		   const DirectionBuffer directionBuffer,
 
-		   // todo: propper handling
-		   const size_t startAt,const size_t batchSize,
+		   const size_t startAt, const size_t batchSize,
 		   const int recursion_depth,
 		   const SphereBuffer sphereBuffer,
 		   const LightBuffer lightBuffer
