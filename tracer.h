@@ -1564,16 +1564,16 @@ void setPixelCanvas(float x, float y, V3 color, Buffer *buffer) {
 void packSphereBuffer(SphereBuffer* sphereBuffer, int sphereCount, Sphere* restrict spheres){
   // todo: 4 floats for now, but consider more
   int paddedSphereCount = ((sphereCount +3)/4)*4;
-  sphereBuffer->x = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer->y = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer->z = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer->radius = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer->r = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer->g = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer->b = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer->specular = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer->reflective = malloc(sizeof(float_t)*paddedSphereCount);
-  sphereBuffer->rr = malloc(sizeof(float_t)*paddedSphereCount);
+  sphereBuffer->x = calloc(sizeof(float_t)*paddedSphereCount,sizeof(char));
+  sphereBuffer->y = calloc(sizeof(float_t)*paddedSphereCount,sizeof(char));
+  sphereBuffer->z = calloc(sizeof(float_t)*paddedSphereCount,sizeof(char));
+  sphereBuffer->radius = calloc(sizeof(float_t)*paddedSphereCount,sizeof(char));
+  sphereBuffer->r = calloc(sizeof(float_t)*paddedSphereCount,sizeof(char));
+  sphereBuffer->g = calloc(sizeof(float_t)*paddedSphereCount,sizeof(char));
+  sphereBuffer->b = calloc(sizeof(float_t)*paddedSphereCount,sizeof(char));
+  sphereBuffer->specular = calloc(sizeof(float_t)*paddedSphereCount,sizeof(char));
+  sphereBuffer->reflective = calloc(sizeof(float_t)*paddedSphereCount,sizeof(char));
+  sphereBuffer->rr = calloc(sizeof(float_t)*paddedSphereCount,sizeof(char));
   sphereBuffer->count = sphereCount;
   for(int i =0; i< sphereCount; i++ ){
     Sphere s = spheres[i];
@@ -1645,11 +1645,8 @@ void packLightBuffer(LightBuffer* lightBuffer, int lightCount, Light* restrict l
   // note calloc, junk in positions lead to infinity in dot
   // and 0*inifnity as a intensity
   lightBuffer->dir_x = calloc(paddedDir, sizeof(float));
-    //malloc(paddedDir*sizeof(float));
   lightBuffer->dir_y = calloc(paddedDir, sizeof(float));
-    //malloc(paddedDir*sizeof(float));
   lightBuffer->dir_z = calloc(paddedDir, sizeof(float));
-    //malloc(paddedDir*sizeof(float));
   // note calloc, making sure no junk light remains
   lightBuffer->dir_intensity = calloc(paddedDir,sizeof(float));
 
@@ -1721,9 +1718,9 @@ void packDirections( DirectionBuffer* directionsBuffer,
   int pixelCount = ((abs(topEdge) + abs(bottomEdge)) * (abs(leftEdge)+abs(righEdge) ) ) ;
   
   directionsBuffer->count = pixelCount;
-  directionsBuffer->x = malloc(sizeof(float_t)*pixelCount);
-  directionsBuffer->y = malloc(sizeof(float_t)*pixelCount);
-  directionsBuffer->z = malloc(sizeof(float_t)*pixelCount);
+  directionsBuffer->x = calloc(sizeof(float_t)*pixelCount,sizeof(char));
+  directionsBuffer->y = calloc(sizeof(float_t)*pixelCount,sizeof(char));
+  directionsBuffer->z = calloc(sizeof(float_t)*pixelCount,sizeof(char));
 
   // todo: consider faield allocation 
   // todo: consider alligned alocations
@@ -1781,7 +1778,7 @@ void initializeIntermediateBuffer(Buffer* template, Buffer* target){
   target->width = template->width;
   target->height = template->height;
   target->size = target->width * target->height *3; // RGB
-  target->start = malloc(target->width * target->height *3);
+  target->start = calloc( target->width * target->height *3, sizeof(char));
 }
 
 void freeIntermediateBuffer(Buffer* buffer){
