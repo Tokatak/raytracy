@@ -1902,8 +1902,10 @@ void fillRegionDepth
   Sphere* restrict spheres, int sphereCount,
   Light* restrict lights, int lightCount)
 {
-  //todo: unused?
+
+  // unused, depth cast returns first target hit
   (void)recursion_depth;
+  
   V3 origin = camera.position;
   V3 cameraDirection = camera.direction;
   int targetBufferColorComponents = layout.components;
