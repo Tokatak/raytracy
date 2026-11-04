@@ -829,13 +829,11 @@ V3 traceRayBatch(
 
 
 V3 traceRayBatchDepth(
-		   V3 O, float t_min, float t_max, 
-		   const Sphere* spheres,		  
-		   const DirectionBuffer directionBuffer,
-		   const size_t startAt, 
-		   const SphereBuffer sphereBuffer
-		   // todo: consider
-		   //		   ,ColorBuffer* const result
+		      V3 O, float t_min, float t_max, 
+		      const Sphere* spheres,		  
+		      const DirectionBuffer directionBuffer,
+		      const size_t startAt, 
+		      const SphereBuffer sphereBuffer
 		      );
 
 #endif
@@ -895,48 +893,14 @@ float ComputeLightingBatch(V3 P, V3 N, V3 View, float s,
   __m128 light_buffer;
   for ( size_t light_offset =0; light_offset< lightbuffer.ambient_count; light_offset+=4){
     light_buffer = _mm_load_ps(lightbuffer.ambient_intensity + light_offset);
-
-#ifdef DEBUG_AMBIENT
-
-    if(logs<logcount)
-      {
-	_mm_storeu_ps(r1_vals, light_buffer);
-	printf("loaded: %f\t %f\t %f\t%f\n", r1_vals[0],r1_vals[1],r1_vals[2],r1_vals[3]);
-      }
-#endif    
     
-     // horizontal
+    // horizontal
     __m128 sum = _mm_hadd_ps(light_buffer,light_buffer);    // [1+2, 3+4, 1+2, 3+4]
-
-#ifdef DEBUG_AMBIENT
-    if(logs<logcount)
-      {
-	_mm_storeu_ps(r1_vals, sum);
-	printf("hadd:\t%f\t %f\t %f\t%f\n", r1_vals[0],r1_vals[1],r1_vals[2],r1_vals[3]);
-      }
-#endif
 
     // horizontal
     sum = _mm_hadd_ps(sum,sum);    // [1+2+3+4,1+2+3+4,1+2+3+4,1+2+3+4]
-#ifdef DEBUG_AMBIENT
-    if(logs<logcount)
-      {
-	_mm_storeu_ps(r1_vals, sum);
-	printf("hadd2:\t%f\t %f\t %f\t%f\n", r1_vals[0],r1_vals[1],r1_vals[2],r1_vals[3]);
-      }
-#endif    
- 
     intensity +=  _mm_cvtss_f32(sum);
   }
-
-#ifdef DEBUG_AMBIENT
-  if(logs<logcount)
-    {
-      printf("%f\n",intensity);
-      logs++;
-    }
-#endif
-
 
 
   /* // POINT */
@@ -1854,19 +1818,19 @@ void fillRegion
 
 #ifdef SIMD
     color = traceRayBatch(
-		   origin,
-		   (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
-		   t_min, t_max,
-		   spheres,  sphereCount,
-		    lights, lightCount,
+			  origin,
+			  (V3){directionsBuffer.x[index], directionsBuffer.y[index], directionsBuffer.z[index]},
+			  t_min, t_max,
+			  spheres,  sphereCount,
+			  lights, lightCount,
 
-		   origin,
-		   directionsBuffer,
-		   index, ////const  size_t startAt, // directions offset
-		   1, //const size_t batchSize,
-		   recursion_depth,
-		   sphereBuffer,
-		   lightBuffer);
+			  origin,
+			  directionsBuffer,
+			  index, ////const  size_t startAt, // directions offset
+			  1, //const size_t batchSize,
+			  recursion_depth,
+			  sphereBuffer,
+			  lightBuffer);
 #endif
 
 
