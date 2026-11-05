@@ -509,12 +509,58 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
 
 
 #ifdef SIMD
-RaySphereIntersection intersectRaySphereBatched(const V3 O,
+RaySphereIntersection intersectRayBatched(const V3 O,
 						const DirectionBuffer directionBuffer,
 						const size_t startAt,
 						const SphereBuffer sphereBuffer,
 						float t_min, float t_max,
 						const Sphere* spheres){
+  // tood: why sphres here?
+
+  
+  // convert this
+  /* RaySphereIntersection result = {0}; */
+  /* float rr = sphere->_rr; */
+  /* const float cx = sphere->position.x; */
+  /* const float cy = sphere->position.y; */
+  /* const float cz = sphere->position.z; */
+  /* const float ocx = O.x - cx; */
+  /* const float ocy = O.y - cy; */
+  /* const float ocz = O.z - cz; */
+  
+  /* const float dx = D.x, */
+  /*   dy = D.y, */
+  /*   dz = D.z; */
+  /* const float a = dx*dx + dy*dy + dz*dz;   */
+  /* const float b = 2.0f * (ocx*dx + ocy*dy + ocz*dz); */
+  /* const float c = ocx*ocx + ocy*ocy + ocz*ocz - rr; */
+  
+  /* float discriminant = b*b - 4*a*c; */
+  /* if( discriminant < 0 ) */
+  /*   { */
+  /*     return result; */
+  /*   }   */
+  /* const float sqrtDiscriminant = sqrtf(discriminant); */
+  /* const float inv_2a = 1.0f / ( 2.0f * a); */
+  /* const float center = -b * inv_2a; */
+  /* const float offset = sqrtDiscriminant * inv_2a; */
+  /* result.t1 = center + offset; */
+  /* result.t2 = center - offset; */
+
+  return result;
+
+  
+  return (RaySphereIntersection){0};
+}
+
+
+RaySphereIntersection intersectRaySphereBatched(const V3 O,
+						const DirectionBuffer directionBuffer,
+						const size_t startAt,
+						const SphereBuffer sphereBuffer,
+						float t_min, float t_max,
+						const Sphere* spheres){// tood: why sphres here? 
+  
   
   // RESULTS
   float r1_vals[4];
