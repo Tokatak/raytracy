@@ -4,6 +4,7 @@ LDFLAGS =
 
 VARIANT_scalar = -DSCALAR
 VARIANT_simd   = -msse3 -DSIMD
+VARIANT_wavefront = -DWAVEFRONT
 
 VARIANTS = scalar simd
 
@@ -19,6 +20,9 @@ depth:
 
 depth-simd:
 	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 ${VARIANT_simd} -o main main.c && ./main.exe -d
+
+build-wavefront:
+	gcc -ffast-math -Wall -Wextra -Wpedantic -g -O0 $(VARIANT_wavefront) -o main main.c && ./main.exe	
 
 optimized:
 	gcc -ffast-math  -Wall -Wextra -Wpedantic -O3  -march=native ${VARIANT_scalar} -o main main.c && ./main.exe
