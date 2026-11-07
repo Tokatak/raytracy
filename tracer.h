@@ -1756,6 +1756,8 @@ typedef struct {
 } RayState;
 #endif
 
+#include <windows.h>
+
 void fillRegion
 ( Region region, Camera camera,
   Buffer buffer,PixelLayout layout,
@@ -1776,6 +1778,7 @@ void fillRegion
   Buffer frameBuffer = {0};
   initializeIntermediateBuffer(&buffer, &frameBuffer);
   
+
   // Create a right vector (perpendicular to camera direction)
   // Assuming Y is up
   V3 up = {0, 1, 0};
@@ -1816,8 +1819,13 @@ void fillRegion
   size_t pixelCount = directionsBuffer.count;
 
 #ifdef WAVEFRONT
-  // v3[pixelcount] frame buffer;
-  // front[pixelcount buffer or RayState]
+  // todo: condider smaller frame
+
+  size_t allocated = sizeof(RayState) * pixelCount;
+  RayState *front = malloc(allocated);
+  RayState *back = malloc(allocated);
+  printf("back, front ray states: %zu bytes (%.2f MiB)\n", allocated, (double)allocated / (1024.0 * 1024.0));
+
   // populate front with default screen data
   // back[pixelcount buffer or RayState]
 
