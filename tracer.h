@@ -497,16 +497,6 @@ RaySphereIntersection intersectRaySphere(const V3 O, const V3 D,const Sphere* re
   return result;
 }
 
-//todo: continue here
-
-// reseqrch required
-// timings for :
-// intersect ray sphre scalar
-// vs batching combination for intersection
-// batched ray, sphere
-// ray, batched sphere
-// batched rays and sphere
-
 
 #ifdef SIMD
 
@@ -1819,6 +1809,10 @@ void fillRegion
   size_t pixelCount = directionsBuffer.count;
 
 #ifdef WAVEFRONT
+  (void)t_min;
+  (void)t_max;
+  (void)origin;
+  (void)recursion_depth;
   // todo: condider smaller frame
 
   size_t allocated = sizeof(RayState) * pixelCount;
@@ -1826,10 +1820,74 @@ void fillRegion
   RayState *back = malloc(allocated);
   printf("back, front ray states: %zu bytes (%.2f MiB)\n", allocated, (double)allocated / (1024.0 * 1024.0));
 
+  /* typedef struct { */
+  /*   V3       origin;           */
+  /*   V3       dir;              */
+  /*   V3       throughput;      // (1 - reflective)  */
+  /*   V3       result; */
+  /*   uint32_t pixelIndex; */
+  /*   int32_t  remaining_depth; */
+  /* } RayState; */
+  
   // populate front with default screen data
-  // back[pixelcount buffer or RayState]
+  V3 viewportSize = camera.viewportSize;
+  float projectionPlane = camera.projectionPlane;
+  /* V3 cameraDirection = camera.direction; */
+
+  float normWidth = viewportSize.x / width;
+  float normHeight = viewportSize.y / height;  
+  float cameraDirectionXprojectionPlaneX = cameraDirection.x * projectionPlane;
+  float cameraDirectionXprojectionPlaneY = cameraDirection.y * projectionPlane;
+  float cameraDirectionXprojectionPlaneZ = cameraDirection.z * projectionPlane;
+
+  int topEdge = region.top;
+  int bottomEdge = region.bot;
+
+  int leftEdge = region.left;
+  int righEdge = region.right;
+
+  // 640*480 307'200
+  /* int pixelCount = ((abs(topEdge) + abs(bottomEdge)) * (abs(leftEdge)+abs(righEdge) ) ) ;  */
+  
+  for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
+    const float viewportY = screeenY * normHeight;
+    const float baseX = cameraDirectionXprojectionPlaneX + actualUp.x * viewportY;
+    const float baseY = cameraDirectionXprojectionPlaneY + actualUp.y * viewportY;
+    const float baseZ = cameraDirectionXprojectionPlaneZ + actualUp.z * viewportY;
+    
+    for (int screenX = leftEdge; screenX < righEdge; screenX++) {
+      const float viewportX = screenX * normWidth;      
+      float x = baseX + right.x * viewportX;
+      float y = baseY + right.y * viewportX;
+      float z = baseZ + right.z * viewportX;
+
+      float dirLen = sqrtf(x*x + y*y + z*z);
+      float invDirLen = 1/dirLen;
+      if (dirLen > 0) {
+        x *= invDirLen;
+        y *= invDirLen;
+        z *= invDirLen;
+      }
+
+      front[pixelIndex] = (RayState){
+	.origin = origin,
+	.dir = {x,y,z},
+	.throughput = {0},
+	.result = {0},
+	.pixelIndex = pixelIndex,
+	.remaining_depth = 1, // todo: udpate to dynamic
+      };
+      
+      /* directionsBuffer->x[pixelIndex] = x; */
+      /* directionsBuffer->y[pixelIndex] = y; */
+      /* directionsBuffer->z[pixelIndex] = z; */
+      pixelIndex++;
+    }
+  }
 
   // itterate
+  /* continue here */
+  
   // acess to frame buffer to fill done states  
 #endif
   
@@ -1897,6 +1955,9 @@ void fillRegionDepth
   (void)recursion_depth;
   
   V3 origin = camera.position;
+  (void)origin;
+  (void)t_min;
+  (void)t_max;
   V3 cameraDirection = camera.direction;
   int targetBufferColorComponents = layout.components;
 
