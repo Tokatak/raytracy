@@ -1848,7 +1848,8 @@ void fillRegion
 
   // 640*480 307'200
   /* int pixelCount = ((abs(topEdge) + abs(bottomEdge)) * (abs(leftEdge)+abs(righEdge) ) ) ;  */
-  
+  int frontRays = ((abs(topEdge) + abs(bottomEdge)) * (abs(leftEdge)+abs(righEdge) ) ) ;
+  int backRays = 0;
   for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
     const float viewportY = screeenY * normHeight;
     const float baseX = cameraDirectionXprojectionPlaneX + actualUp.x * viewportY;
@@ -1876,19 +1877,79 @@ void fillRegion
 	.result = {0},
 	.pixelIndex = pixelIndex,
 	.remaining_depth = 1, // todo: udpate to dynamic
-      };
-      
-      /* directionsBuffer->x[pixelIndex] = x; */
-      /* directionsBuffer->y[pixelIndex] = y; */
-      /* directionsBuffer->z[pixelIndex] = z; */
-      pixelIndex++;
+      };     
+      pixelIndex++ ;
     }
   }
 
+
+  //
+  /* frontRays */
+  /* backRays */
   // itterate
-  /* continue here */
+  /* RayState* ray; */
+  /* Sphere *closestSphere = NULL; */
+  for( int i=0; i < frontRays; i++){
+    /* ray = frontRays[i]; */
+
+    // todo intersect
+    
+    /* if( closestSphere == NULL ){ */
+    /*   //todo: write DEFAULT_COLOR; to out color buffer */
+    /*   continue;       */
+    /* } */
+
+    /* if( lightCount == 0 ){ */
+    /*   //todo: write closestSphere->color */
+    /*   continue; */
+    /* } */
+
+    // todo: lit conversion
+    /* V3 P; */
+    /* P.x = O.x + closest_t * D.x; */
+    /* P.y = O.y + closest_t * D.y; */
+    /* P.z = O.z + closest_t * D.z; */
+
+    /* V3 N; */
+    /* N.x = P.x - closestSphere->position.x; */
+    /* N.y = P.y - closestSphere->position.y; */
+    /* N.z = P.z - closestSphere->position.z;; */
+
+    /* V3 local_color = closestSphere->color; */
+
+    /* V3 v = v3_negate(D); */
+    /* // v from object to camera = -D from camera to object */
+    /* float light = ComputeLighting(P,N,v,closestSphere->specular, spheres, sphereCount, lights, lightCount); */
+
+    /* local_color.x *= light; */
+    /* local_color.y *= light; */
+    /* local_color.z *= light; */
+
+    /* float reflective = closestSphere->reflective; */
+    /* if ( recursion_depth <= 0 || reflective <=0 ){ */
+    /*   return local_color; */
+    /* } */
+
+    // continue here
+
+    // todo: pack ray and move it to back
+    // increment backCount
+
+    
+    /* // -D */
+    /* V3 R = {0};  */
+    /* ReflectRay(N,v,&R); */
+    /* V3 reflected_color = traceRay(P, R, EPSILON, BIG_NUMBER, recursion_depth-1, spheres, sphereCount, lights, lightCount); */
+    /* V3 result; */
+    /* result.x = local_color.x*(1-reflective) + reflected_color.x*reflective; */
+    /* result.y = local_color.y*(1-reflective) + reflected_color.y*reflective; */
+    /* result.z = local_color.z*(1-reflective) + reflected_color.z*reflective; */
   
-  // acess to frame buffer to fill done states  
+    //todo: sawp
+
+    //toro: repeat while backCount >0
+    
+  }  
 #endif
   
   for ( size_t index = 0; index< pixelCount; index++){
