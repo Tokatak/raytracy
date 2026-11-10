@@ -1899,7 +1899,7 @@ void fillRegion
     /*   continue;       */
     /* } */
 
-    /* if( lightCount == 0 ){ */
+    /* if( lightCount == 0 ){ */ 
     /*   //todo: write closestSphere->color */
     /*   continue; */
     /* } */
