@@ -350,6 +350,13 @@ V3 v3_sub(const V3 a,const V3 b){
   return (V3){a.x-b.x, a.y - b.y, a.z-b.z};
 }
 
+static inline 
+void v3_scale(V3* v, const float scale){
+  v->x *= scale;
+  v->y *= scale;
+  v->z *= scale;
+}
+
 #endif
 
 #ifndef COLOR_BUFFER_H
@@ -1863,7 +1870,7 @@ void fillRegion
       front[pixelIndex] = (RayState){
 	.origin = origin,
 	.dir = {x,y,z},
-	.throughput = {0},
+	.throughput = {1.0f, 1.0f, 1.0f},
 	.result = {0},
 	.pixelIndex = pixelIndex,
 	.remaining_depth = 1, // todo: udpate to dynamic
@@ -1988,7 +1995,13 @@ void fillRegion
     local_color.z *= light;
 
     float reflective = closest_sphere->reflective;
-    // todo: recursion depth source? from ray?
+    float throughput = ray->throughput;
+
+    // todo: recheck here 
+    /* local_color.x *= (1-reflective) * throughput; */
+    /* local_color.y *= (1-reflective) * throughput; */
+    /* local_color.z *= (1-reflective) * throughput; */
+    
     if ( recursion_depth <= 0 || reflective <=0 ){
       // todo: cleanup
       ray->result = local_color;
@@ -2011,13 +2024,16 @@ void fillRegion
     
     /* // -D */
     V3 R = {0};
-    ReflectRay(N,v,&R);
-    rayState  = back + backRays;
-    *rayState = *ray;
-    rayState->origin = P;
-    rayState->dir = R;
-    rayState->remaining_depth--;
-    backrays++;        
+    // todo: recheck here 
+    /* ReflectRay(N,v,&R); */
+
+    /* RayState *child = back + backRays; */
+    /* *child = *ray; */
+    /* child->origin = P; */
+    /* child->dir = R; */
+    /* child->remaining_depth--; */
+    /* v3_scale(&child->throughput, reflective) ; */
+    /* backRays++;         */
     
     /* V3 reflected_color = traceRay(P, R, EPSILON, BIG_NUMBER, recursion_depth-1, spheres, sphereCount, lights, lightCount); */
     /* V3 result; */
