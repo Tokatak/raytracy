@@ -2017,7 +2017,7 @@ void fillRegion
       continue;
     }
 
-    // continue here  
+    // continue here   
 
     // todo: pack ray and move it to back
     // increment backCount
