@@ -1997,7 +1997,7 @@ void fillRegion
     float reflective = closest_sphere->reflective;
     float throughput = ray->throughput;
 
-    // todo: recheck here 
+    // todo: recheck here  
     /* local_color.x *= (1-reflective) * throughput; */
     /* local_color.y *= (1-reflective) * throughput; */
     /* local_color.z *= (1-reflective) * throughput; */
