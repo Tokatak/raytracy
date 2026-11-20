@@ -357,6 +357,13 @@ void v3_scale(V3* v, const float scale){
   v->z *= scale;
 }
 
+static inline 
+void v3_scale_v3(V3* v, const V3* scale){
+  v->x *= scale->x;
+  v->y *= scale->y;
+  v->z *= scale->z;
+}
+
 #endif
 
 #ifndef COLOR_BUFFER_H
@@ -1823,6 +1830,7 @@ void fillRegion
   size_t allocated = sizeof(RayState) * pixelCount;
   RayState *front = malloc(allocated);
   RayState *back = malloc(allocated);
+  RayState *tmp = NULL;
   printf("back, front ray states: %zu bytes (%.2f MiB)\n", allocated, (double)allocated / (1024.0 * 1024.0));
 
   // populate front with default screen data
@@ -1847,205 +1855,208 @@ void fillRegion
   int frontRays = ((abs(topEdge) + abs(bottomEdge)) * (abs(leftEdge)+abs(righEdge) ) ) ;
   int backRays = 0;
   RayState* rayState = NULL;
-  for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
-    const float viewportY = screeenY * normHeight;
-    const float baseX = cameraDirectionXprojectionPlaneX + actualUp.x * viewportY;
-    const float baseY = cameraDirectionXprojectionPlaneY + actualUp.y * viewportY;
-    const float baseZ = cameraDirectionXprojectionPlaneZ + actualUp.z * viewportY;
-    
-    for (int screenX = leftEdge; screenX < righEdge; screenX++) {
-      const float viewportX = screenX * normWidth;
-      float x = baseX + right.x * viewportX;
-      float y = baseY + right.y * viewportX;
-      float z = baseZ + right.z * viewportX;
 
-      float dirLen = sqrtf(x*x + y*y + z*z);
-      float invDirLen = 1/dirLen;
-      if (dirLen > 0) {
-        x *= invDirLen;
-        y *= invDirLen;
-        z *= invDirLen;
+      for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
+	const float viewportY = screeenY * normHeight;
+	const float baseX = cameraDirectionXprojectionPlaneX + actualUp.x * viewportY;
+	const float baseY = cameraDirectionXprojectionPlaneY + actualUp.y * viewportY;
+	const float baseZ = cameraDirectionXprojectionPlaneZ + actualUp.z * viewportY;
+    
+	for (int screenX = leftEdge; screenX < righEdge; screenX++) {
+	  const float viewportX = screenX * normWidth;
+	  float x = baseX + right.x * viewportX;
+	  float y = baseY + right.y * viewportX;
+	  float z = baseZ + right.z * viewportX;
+
+	  float dirLen = sqrtf(x*x + y*y + z*z);
+	  float invDirLen = 1/dirLen;
+	  if (dirLen > 0) {
+	    x *= invDirLen;
+	    y *= invDirLen;
+	    z *= invDirLen;
+	  }
+
+	  front[pixelIndex] = (RayState){
+	    .origin = origin,
+	    .dir = {x,y,z},
+	    .throughput = {1.0f, 1.0f, 1.0f},
+	    .result = {0},
+	    .pixelIndex = pixelIndex,
+	    .remaining_depth = 1, // todo: udpate to dynamic
+	  };
+	  pixelIndex++ ;
+	}
       }
 
-      front[pixelIndex] = (RayState){
-	.origin = origin,
-	.dir = {x,y,z},
-	.throughput = {1.0f, 1.0f, 1.0f},
-	.result = {0},
-	.pixelIndex = pixelIndex,
-	.remaining_depth = 1, // todo: udpate to dynamic
-      };
-      pixelIndex++ ;
-    }
-  }
+      //
+      /* frontRays */
+      /* backRays */
+      // itterate
+      RayState* ray;
+      V3 O;
+      V3 D;
 
-  //
-  /* frontRays */
-  /* backRays */
-  // itterate
-  RayState* ray;
-  V3 O;
-  V3 D;
-  /* Sphere *closestSphere = NULL; */
-  for( int i=0; i < frontRays; i++){
-    ray = front+i;
-    O = ray->origin;
-    D = ray->dir;
+      // todo: continue here - bugged      
+  while (frontRays > 0)
+    {
+  
+      /* Sphere *closestSphere = NULL; */
+      for( int i=0; i < frontRays; i++){
+	ray = front+i;
+	O = ray->origin;
+	D = ray->dir;
 
-    RaySphereIntersection  result = {0};
+	RaySphereIntersection  result = {0};
 
-    // intersectRaySphereClosest
-    float closest_t = BIG_NUMBER;
-    const Sphere* closest_sphere = NULL;
-    RaySphereIntersection hit;
-    for ( int i=0; i< sphereCount; i++){
-      const Sphere* sphere = spheres+i;
+	// intersectRaySphereClosest
+	float closest_t = BIG_NUMBER;
+	const Sphere* closest_sphere = NULL;
+	RaySphereIntersection hit;
+	for ( int i=0; i< sphereCount; i++){
+	  const Sphere* sphere = spheres+i;
 	
-      // intersectRaySphere
-      float rr = sphere->_rr;
-      const float cx = sphere->position.x;
-      const float cy = sphere->position.y;
-      const float cz = sphere->position.z;
-      const float ocx = O.x - cx;
-      const float ocy = O.y - cy;
-      const float ocz = O.z - cz;
+	  // intersectRaySphere
+	  float rr = sphere->_rr;
+	  const float cx = sphere->position.x;
+	  const float cy = sphere->position.y;
+	  const float cz = sphere->position.z;
+	  const float ocx = O.x - cx;
+	  const float ocy = O.y - cy;
+	  const float ocz = O.z - cz;
   
-      const float dx = D.x,
-	dy = D.y,
-	dz = D.z;
-      const float a = dx*dx + dy*dy + dz*dz;
-      const float b = 2.0f * (ocx*dx + ocy*dy + ocz*dz);
-      const float c = ocx*ocx + ocy*ocy + ocz*ocz - rr;
+	  const float dx = D.x,
+	    dy = D.y,
+	    dz = D.z;
+	  const float a = dx*dx + dy*dy + dz*dz;
+	  const float b = 2.0f * (ocx*dx + ocy*dy + ocz*dz);
+	  const float c = ocx*ocx + ocy*ocy + ocz*ocz - rr;
   
-      float discriminant = b*b - 4*a*c;
-      if( discriminant >= 0 ) {
-	const float sqrtDiscriminant = sqrtf(discriminant);
-	const float inv_2a = 1.0f / ( 2.0f * a);
-	const float center = -b * inv_2a;
-	const float offset = sqrtDiscriminant * inv_2a;
-	hit.t1 = center + offset;
-	hit.t2 = center - offset;
-      }
-      // intersectRaySphere
+	  float discriminant = b*b - 4*a*c;
+	  if( discriminant >= 0 ) {
+	    const float sqrtDiscriminant = sqrtf(discriminant);
+	    const float inv_2a = 1.0f / ( 2.0f * a);
+	    const float center = -b * inv_2a;
+	    const float offset = sqrtDiscriminant * inv_2a;
+	    hit.t1 = center + offset;
+	    hit.t2 = center - offset;
+	  }
+	  // intersectRaySphere
 
-      if( hit.t1 > t_min && hit.t1 < t_max && hit.t1 < closest_t){
-	closest_t = hit.t1;
-	closest_sphere = sphere;
-      }
+	  if( hit.t1 > t_min && hit.t1 < t_max && hit.t1 < closest_t){
+	    closest_t = hit.t1;
+	    closest_sphere = sphere;
+	  }
 
-      if( hit.t2 > t_min && hit.t2 < t_max && hit.t2 < closest_t){
-	closest_t = hit.t2;
-	closest_sphere = sphere;
-      }
+	  if( hit.t2 > t_min && hit.t2 < t_max && hit.t2 < closest_t){
+	    closest_t = hit.t2;
+	    closest_sphere = sphere;
+	  }
 
-    }
-    result.t1 = closest_t;
-    result.sphere = closest_sphere;
-    // intersectRaySphereClosest
+	}
+	result.t1 = closest_t;
+	result.sphere = closest_sphere;
+	// intersectRaySphereClosest
     
-    
-    if( closest_sphere == NULL ){
-      // todo: cleanup
-      ray->result = DEFAULT_COLOR;
-      ray->remaining_depth = 0;
-      const int byteOffset = ray->pixelIndex * 3;
-      frameBuffer.start[byteOffset + 0] =
-	(unsigned char)(ray->result.x > 255.0f ? 255.0f : (ray->result.x < 0.0f ? 0.0f : ray->result.x));
-      frameBuffer.start[byteOffset + 1] =
-	(unsigned char)(ray->result.y > 255.0f ? 255.0f : (ray->result.y < 0.0f ? 0.0f : ray->result.y));
-      frameBuffer.start[byteOffset + 2] =
-	(unsigned char)(ray->result.z > 255.0f ? 255.0f : (ray->result.z < 0.0f ? 0.0f : ray->result.z));
-      continue;
-    }
-
-    if( lightCount == 0 ){
-      // todo: cleanup
-      ray->result = closest_sphere->color;
-      ray->remaining_depth = 0;
-      const int byteOffset = ray->pixelIndex * 3;
-      frameBuffer.start[byteOffset + 0] =
-	(unsigned char)(ray->result.x > 255.0f ? 255.0f : (ray->result.x < 0.0f ? 0.0f : ray->result.x));
-      frameBuffer.start[byteOffset + 1] =
-	(unsigned char)(ray->result.y > 255.0f ? 255.0f : (ray->result.y < 0.0f ? 0.0f : ray->result.y));
-      frameBuffer.start[byteOffset + 2] =
-	(unsigned char)(ray->result.z > 255.0f ? 255.0f : (ray->result.z < 0.0f ? 0.0f : ray->result.z));
-      continue;
-    }
-
-    // todo: lit conversion
-    V3 P;
-    P.x = O.x + closest_t * D.x;
-    P.y = O.y + closest_t * D.y;
-    P.z = O.z + closest_t * D.z;
-
-    V3 N;
-    N.x = P.x - closest_sphere->position.x;
-    N.y = P.y - closest_sphere->position.y;
-    N.z = P.z - closest_sphere->position.z;;
-
-    V3 local_color = closest_sphere->color;
-
-    V3 v = v3_negate(D);
-    /* // v from object to camera = -D from camera to object */
-    //todo: very heavy method
-    float light = ComputeLighting(P,N,v,closest_sphere->specular, spheres, sphereCount, lights, lightCount);
-
-    local_color.x *= light;
-    local_color.y *= light;
-    local_color.z *= light;
-
-    float reflective = closest_sphere->reflective;
-    float throughput = ray->throughput;
-
-    // todo: recheck here  
-    /* local_color.x *= (1-reflective) * throughput; */
-    /* local_color.y *= (1-reflective) * throughput; */
-    /* local_color.z *= (1-reflective) * throughput; */
-    
-    if ( recursion_depth <= 0 || reflective <=0 ){
-      // todo: cleanup
-      ray->result = local_color;
-      ray->remaining_depth = 0;
-      const int byteOffset = ray->pixelIndex * 3;
+	V3 throughput = ray->throughput;
+	if( closest_sphere == NULL ){
+	  // todo: cleanup
+	  ray->result = DEFAULT_COLOR;
+	  v3_scale_v3(&ray->result, &throughput);
       
-      frameBuffer.start[byteOffset + 0] =
-	(unsigned char)(ray->result.x > 255.0f ? 255.0f : (ray->result.x < 0.0f ? 0.0f : ray->result.x));
-      frameBuffer.start[byteOffset + 1] =
-	(unsigned char)(ray->result.y > 255.0f ? 255.0f : (ray->result.y < 0.0f ? 0.0f : ray->result.y));
-      frameBuffer.start[byteOffset + 2] =
-	(unsigned char)(ray->result.z > 255.0f ? 255.0f : (ray->result.z < 0.0f ? 0.0f : ray->result.z));
-      continue;
-    }
+	  ray->remaining_depth = 0;
+	  const int byteOffset = ray->pixelIndex * 3;
+	  frameBuffer.start[byteOffset + 0] =
+	    (unsigned char)(ray->result.x > 255.0f ? 255.0f : (ray->result.x < 0.0f ? 0.0f : ray->result.x));
+	  frameBuffer.start[byteOffset + 1] =
+	    (unsigned char)(ray->result.y > 255.0f ? 255.0f : (ray->result.y < 0.0f ? 0.0f : ray->result.y));
+	  frameBuffer.start[byteOffset + 2] =
+	    (unsigned char)(ray->result.z > 255.0f ? 255.0f : (ray->result.z < 0.0f ? 0.0f : ray->result.z));
+	  continue;
+	}
 
-    // continue here    
+	if( lightCount == 0 ){
+	  // todo: cleanup
+	  ray->result = closest_sphere->color;
+	  ray->remaining_depth = 0;
+	  const int byteOffset = ray->pixelIndex * 3;
+	  frameBuffer.start[byteOffset + 0] =
+	    (unsigned char)(ray->result.x > 255.0f ? 255.0f : (ray->result.x < 0.0f ? 0.0f : ray->result.x));
+	  frameBuffer.start[byteOffset + 1] =
+	    (unsigned char)(ray->result.y > 255.0f ? 255.0f : (ray->result.y < 0.0f ? 0.0f : ray->result.y));
+	  frameBuffer.start[byteOffset + 2] =
+	    (unsigned char)(ray->result.z > 255.0f ? 255.0f : (ray->result.z < 0.0f ? 0.0f : ray->result.z));
+	  continue;
+	}
 
-    // todo: pack ray and move it to back
-    // increment backCount
+	// todo: lit conversion
+	V3 P;
+	P.x = O.x + closest_t * D.x;
+	P.y = O.y + closest_t * D.y;
+	P.z = O.z + closest_t * D.z;
+
+	V3 N;
+	N.x = P.x - closest_sphere->position.x;
+	N.y = P.y - closest_sphere->position.y;
+	N.z = P.z - closest_sphere->position.z;;
+
+	V3 local_color = closest_sphere->color;
+
+	V3 v = v3_negate(D);
+	/* // v from object to camera = -D from camera to object */
+	//todo: very heavy method
+	float light = ComputeLighting(P,N,v,closest_sphere->specular, spheres, sphereCount, lights, lightCount);
+
+	local_color.x *= light;
+	local_color.y *= light;
+	local_color.z *= light;
+
+	float reflective = closest_sphere->reflective;
+
+	// todo: recheck here  
+	local_color.x *= (1-reflective);
+	local_color.y *= (1-reflective);
+	local_color.z *= (1-reflective);
+    
+	if ( ray->remaining_depth <= 0 || reflective <=0 ){
+	  // todo: cleanup
+	  v3_scale_v3(&local_color, &throughput);
+      
+	  ray->result = local_color;
+	  ray->remaining_depth = 0;
+      
+	  const int byteOffset = ray->pixelIndex * 3;      
+	  frameBuffer.start[byteOffset + 0] =
+	    (unsigned char)(ray->result.x > 255.0f ? 255.0f : (ray->result.x < 0.0f ? 0.0f : ray->result.x));
+	  frameBuffer.start[byteOffset + 1] =
+	    (unsigned char)(ray->result.y > 255.0f ? 255.0f : (ray->result.y < 0.0f ? 0.0f : ray->result.y));
+	  frameBuffer.start[byteOffset + 2] =
+	    (unsigned char)(ray->result.z > 255.0f ? 255.0f : (ray->result.z < 0.0f ? 0.0f : ray->result.z));
+	  continue;
+	}
      
-    /* // -D */
-    V3 R = {0};
-    // todo: recheck here 
-    /* ReflectRay(N,v,&R); */
+	/* // -D */
+	V3 R = {0};
+	/* todo: recheck here  */
+	ReflectRay(N,v,&R);
 
-    /* RayState *child = back + backRays; */
-    /* *child = *ray; */
-    /* child->origin = P; */
-    /* child->dir = R; */
-    /* child->remaining_depth--; */
-    /* v3_scale(&child->throughput, reflective) ; */
-    /* backRays++;         */
+	RayState *child = back + backRays;
+	*child = *ray;
+	child->origin = P;
+	child->dir = R;
+	child->remaining_depth--;
+	child->throughput = throughput;
+	v3_scale(&child->throughput, (1-reflective)) ;
+	backRays++;
     
-    /* V3 reflected_color = traceRay(P, R, EPSILON, BIG_NUMBER, recursion_depth-1, spheres, sphereCount, lights, lightCount); */
-    /* V3 result; */
-    /* result.x = local_color.x*(1-reflective) + reflected_color.x*reflective; */
-    /* result.y = local_color.y*(1-reflective) + reflected_color.y*reflective; */
-    /* result.z = local_color.z*(1-reflective) + reflected_color.z*reflective; */
+      }
   
-    //todo: sawp
-
-    //toro: repeat while backCount >0
-    
-  } 
+      frontRays = backRays;
+      backRays = 0;
+      tmp = front;
+      front = back;
+      back = tmp;
+      tmp = NULL;
+    }
 #endif
 
   V3 color = {0};
