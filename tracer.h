@@ -2018,7 +2018,7 @@ void fillRegion
 	local_color.z *= (1-reflective);
     
 	if ( ray->remaining_depth <= 0 || reflective <=0 ){
-	  // todo: cleanup
+	  // todo: cleanup 
 	  v3_scale_v3(&local_color, &throughput);
       
 	  ray->result = local_color;
