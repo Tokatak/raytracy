@@ -1896,7 +1896,7 @@ void fillRegion
       V3 O;
       V3 D;
 
-      // todo: continue here - bugged      
+      // todo: continue here - bugged       
   while (frontRays > 0)
     {
   
