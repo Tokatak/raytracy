@@ -346,6 +346,13 @@ float v3_len(const V3 v){
 }
 
 static inline
+void v3_add_ref(V3* const a,const V3* b){
+  a->x +=b->x;
+  a->y +=b->y;
+  a->z +=b->z;
+}
+
+static inline
 V3 v3_sub(const V3 a,const V3 b){
   return (V3){a.x-b.x, a.y - b.y, a.z-b.z};
 }
@@ -1821,10 +1828,6 @@ void fillRegion
   size_t pixelCount = directionsBuffer.count;
 
 #ifdef WAVEFRONT
-  (void)t_min;
-  (void)t_max;
-  (void)origin;
-  (void)recursion_depth;
   // todo: condider smaller frame
   
   size_t allocated = sizeof(RayState) * pixelCount;
@@ -1882,7 +1885,7 @@ void fillRegion
 	    .throughput = {1.0f, 1.0f, 1.0f},
 	    .result = {0},
 	    .pixelIndex = pixelIndex,
-	    .remaining_depth = 1, // todo: udpate to dynamic
+	    .remaining_depth = recursion_depth, // todo: udpate to dynamic
 	  };
 	  pixelIndex++ ;
 	}
@@ -1939,18 +1942,20 @@ void fillRegion
 	    const float offset = sqrtDiscriminant * inv_2a;
 	    hit.t1 = center + offset;
 	    hit.t2 = center - offset;
+
+	    
+	    if( hit.t1 > t_min && hit.t1 < t_max && hit.t1 < closest_t){
+	      closest_t = hit.t1;
+	      closest_sphere = sphere;
+	    }
+
+	    if( hit.t2 > t_min && hit.t2 < t_max && hit.t2 < closest_t){
+	      closest_t = hit.t2;
+	      closest_sphere = sphere;
+	    }
+
 	  }
 	  // intersectRaySphere
-
-	  if( hit.t1 > t_min && hit.t1 < t_max && hit.t1 < closest_t){
-	    closest_t = hit.t1;
-	    closest_sphere = sphere;
-	  }
-
-	  if( hit.t2 > t_min && hit.t2 < t_max && hit.t2 < closest_t){
-	    closest_t = hit.t2;
-	    closest_sphere = sphere;
-	  }
 
 	}
 	result.t1 = closest_t;
@@ -1960,8 +1965,9 @@ void fillRegion
 	V3 throughput = ray->throughput;
 	if( closest_sphere == NULL ){
 	  // todo: cleanup
-	  ray->result = DEFAULT_COLOR;
-	  v3_scale_v3(&ray->result, &throughput);
+	  ray->result.x += throughput.x * DEFAULT_COLOR.x;
+	  ray->result.y += throughput.y * DEFAULT_COLOR.y;
+	  ray->result.z += throughput.z * DEFAULT_COLOR.z;
       
 	  ray->remaining_depth = 0;
 	  const int byteOffset = ray->pixelIndex * 3;
@@ -2011,26 +2017,29 @@ void fillRegion
 	local_color.z *= light;
 
 	float reflective = closest_sphere->reflective;
+	int can_continue = (ray->remaining_depth > 0) && (reflective > 0.0f);
+	float k = can_continue ? (1.0f - reflective) : 1.0f;
 
-	// todo: recheck here  
-	local_color.x *= (1-reflective);
-	local_color.y *= (1-reflective);
-	local_color.z *= (1-reflective);
-    
+	ray->result.x += throughput.x * local_color.x * k;
+	ray->result.y += throughput.y * local_color.y * k;
+	ray->result.z += throughput.z * local_color.z * k;
+	
 	if ( ray->remaining_depth <= 0 || reflective <=0 ){
-	  // todo: cleanup 
-	  v3_scale_v3(&local_color, &throughput);
-      
-	  ray->result = local_color;
 	  ray->remaining_depth = 0;
-      
+	  // todo: cleanup 
 	  const int byteOffset = ray->pixelIndex * 3;      
 	  frameBuffer.start[byteOffset + 0] =
-	    (unsigned char)(ray->result.x > 255.0f ? 255.0f : (ray->result.x < 0.0f ? 0.0f : ray->result.x));
+	    (unsigned char)(ray->result.x > 255.0f ?
+			    255.0f :
+			    (ray->result.x < 0.0f ? 0.0f : ray->result.x));
 	  frameBuffer.start[byteOffset + 1] =
-	    (unsigned char)(ray->result.y > 255.0f ? 255.0f : (ray->result.y < 0.0f ? 0.0f : ray->result.y));
+	    (unsigned char)(ray->result.y > 255.0f ?
+			    255.0f :
+			    (ray->result.y < 0.0f ? 0.0f : ray->result.y));
 	  frameBuffer.start[byteOffset + 2] =
-	    (unsigned char)(ray->result.z > 255.0f ? 255.0f : (ray->result.z < 0.0f ? 0.0f : ray->result.z));
+	    (unsigned char)(ray->result.z > 255.0f ?
+			    255.0f :
+			    (ray->result.z < 0.0f ? 0.0f : ray->result.z));
 	  continue;
 	}
      
@@ -2045,7 +2054,7 @@ void fillRegion
 	child->dir = R;
 	child->remaining_depth--;
 	child->throughput = throughput;
-	v3_scale(&child->throughput, (1-reflective)) ;
+	v3_scale(&child->throughput, reflective) ;
 	backRays++;
     
       }
