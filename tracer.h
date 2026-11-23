@@ -1828,8 +1828,7 @@ void fillRegion
   size_t pixelCount = directionsBuffer.count;
 
 #ifdef WAVEFRONT
-  // todo: condider smaller frame
-  
+  // todo: condider smaller frame ?  
   size_t allocated = sizeof(RayState) * pixelCount;
   RayState *front = malloc(allocated);
   RayState *back = malloc(allocated);
@@ -1839,7 +1838,6 @@ void fillRegion
   // populate front with default screen data
   V3 viewportSize = camera.viewportSize;
   float projectionPlane = camera.projectionPlane;
-  /* V3 cameraDirection = camera.direction; */
 
   float normWidth = viewportSize.x / width;
   float normHeight = viewportSize.y / height;
@@ -1853,57 +1851,48 @@ void fillRegion
   int leftEdge = region.left;
   int righEdge = region.right;
 
-  // 640*480 307'200
-  /* int pixelCount = ((abs(topEdge) + abs(bottomEdge)) * (abs(leftEdge)+abs(righEdge) ) ) ;  */
   int frontRays = ((abs(topEdge) + abs(bottomEdge)) * (abs(leftEdge)+abs(righEdge) ) ) ;
   int backRays = 0;
   RayState* rayState = NULL;
 
-      for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
-	const float viewportY = screeenY * normHeight;
-	const float baseX = cameraDirectionXprojectionPlaneX + actualUp.x * viewportY;
-	const float baseY = cameraDirectionXprojectionPlaneY + actualUp.y * viewportY;
-	const float baseZ = cameraDirectionXprojectionPlaneZ + actualUp.z * viewportY;
+  for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
+    const float viewportY = screeenY * normHeight;
+    const float baseX = cameraDirectionXprojectionPlaneX + actualUp.x * viewportY;
+    const float baseY = cameraDirectionXprojectionPlaneY + actualUp.y * viewportY;
+    const float baseZ = cameraDirectionXprojectionPlaneZ + actualUp.z * viewportY;
     
-	for (int screenX = leftEdge; screenX < righEdge; screenX++) {
-	  const float viewportX = screenX * normWidth;
-	  float x = baseX + right.x * viewportX;
-	  float y = baseY + right.y * viewportX;
-	  float z = baseZ + right.z * viewportX;
+    for (int screenX = leftEdge; screenX < righEdge; screenX++) {
+      const float viewportX = screenX * normWidth;
+      float x = baseX + right.x * viewportX;
+      float y = baseY + right.y * viewportX;
+      float z = baseZ + right.z * viewportX;
 
-	  float dirLen = sqrtf(x*x + y*y + z*z);
-	  float invDirLen = 1/dirLen;
-	  if (dirLen > 0) {
-	    x *= invDirLen;
-	    y *= invDirLen;
-	    z *= invDirLen;
-	  }
-
-	  front[pixelIndex] = (RayState){
-	    .origin = origin,
-	    .dir = {x,y,z},
-	    .throughput = {1.0f, 1.0f, 1.0f},
-	    .result = {0},
-	    .pixelIndex = pixelIndex,
-	    .remaining_depth = recursion_depth, // todo: udpate to dynamic
-	  };
-	  pixelIndex++ ;
-	}
+      float dirLen = sqrtf(x*x + y*y + z*z);
+      float invDirLen = 1/dirLen;
+      if (dirLen > 0) {
+	x *= invDirLen;
+	y *= invDirLen;
+	z *= invDirLen;
       }
 
-      //
-      /* frontRays */
-      /* backRays */
-      // itterate
-      RayState* ray;
-      V3 O;
-      V3 D;
+      front[pixelIndex] = (RayState){
+	.origin = origin,
+	.dir = {x,y,z},
+	.throughput = {1.0f, 1.0f, 1.0f},
+	.result = {0},
+	.pixelIndex = pixelIndex,
+	.remaining_depth = recursion_depth,
+      };
+      pixelIndex++ ;
+    }
+  }
 
-      // todo: continue here - bugged       
+  RayState* ray;
+  V3 O;
+  V3 D;
+
   while (frontRays > 0)
-    {
-  
-      /* Sphere *closestSphere = NULL; */
+    { 
       for( int i=0; i < frontRays; i++){
 	ray = front+i;
 	O = ray->origin;
@@ -1956,12 +1945,11 @@ void fillRegion
 
 	  }
 	  // intersectRaySphere
-
 	}
 	result.t1 = closest_t;
 	result.sphere = closest_sphere;
 	// intersectRaySphereClosest
-    
+   
 	V3 throughput = ray->throughput;
 	if( closest_sphere == NULL ){
 	  // todo: cleanup
@@ -2045,7 +2033,6 @@ void fillRegion
      
 	/* // -D */
 	V3 R = {0};
-	/* todo: recheck here  */
 	ReflectRay(N,v,&R);
 
 	RayState *child = back + backRays;
@@ -2055,8 +2042,7 @@ void fillRegion
 	child->remaining_depth--;
 	child->throughput = throughput;
 	v3_scale(&child->throughput, reflective) ;
-	backRays++;
-    
+	backRays++;    
       }
   
       frontRays = backRays;
@@ -2096,8 +2082,7 @@ void fillRegion
 #endif
 
 
-    #ifndef WAVEFRONT
-    /* targetBufferColorComponents; */
+#ifndef WAVEFRONT
     const int byteOffset = index * 3;
     // todo: check if this should be plain number or normalized and re-normalized in byte
     frameBuffer.start[byteOffset + 0] =
@@ -2106,7 +2091,7 @@ void fillRegion
       (unsigned char)(color.y > 255.0f ? 255.0f : (color.y < 0.0f ? 0.0f : color.y));
     frameBuffer.start[byteOffset + 2] =
       (unsigned char)(color.z > 255.0f ? 255.0f : (color.z < 0.0f ? 0.0f : color.z));
-    #endif
+#endif
   }
 
   swizzle( frameBuffer.start, bufferStart,
