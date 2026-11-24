@@ -190,11 +190,13 @@ RenderTestContext* create_context(const char* test_name){
 
   
   // todo: consider more robost
-  #ifdef SIMD
+#ifdef SIMD
   strcpy(ctx->defines, "SIMD");
-  #else
+#elif defined(WAVEFRONT)
+  strcpy(ctx->defines, "WAVEFRONT");
+#else
   strcpy(ctx->defines, "default");
-  #endif
+#endif
 
   return ctx;
 }

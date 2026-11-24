@@ -38,6 +38,8 @@ tests-build-scalar:
 	gcc -ffast-math -Wall  -I./external/minunit -I./ ./tests/main.c $(VARIANT_scalar) -o test_suite_scalar
 tests-build-simd:
 	gcc -ffast-math -Wall  -I./external/minunit -I./ ./tests/main.c $(VARIANT_simd) -o test_suite_simd
+tests-build-wavefront:
+	gcc -ffast-math -Wall  -I./external/minunit -I./ ./tests/main.c $(VARIANT_wavefront) -o test_suite_wavefront
 # todo outdated 
 tests-build-cl:
 	cl /Zi /DEBUG /EHsc /I ./ /I ./external/* ./tests/main.c /Fe:cl_test_suite.exe
@@ -47,7 +49,9 @@ tests-run: # todo: consider smarter define itteration
 	@printf "==SCALAR==\n"
 	-test_suite_scalar.exe 
 	@printf "==SIMD==\n"
-	-test_suite_simd.exe	
+	-test_suite_simd.exe
+	# @printf "==WAVEFRONT==\n"
+	# -test_suite_wavefront.exe	
 test tests: tests-clean tests-build tests-run
 
 
