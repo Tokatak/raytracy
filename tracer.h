@@ -2014,7 +2014,7 @@ void fillRegion
 	
 	if ( ray->remaining_depth <= 0 || reflective <=0 ){
 	  ray->remaining_depth = 0;
-	  // todo: cleanup 
+	  // todo: cleanup  
 	  const int byteOffset = ray->pixelIndex * 3;      
 	  frameBuffer.start[byteOffset + 0] =
 	    (unsigned char)(ray->result.x > 255.0f ?
