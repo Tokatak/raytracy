@@ -2084,7 +2084,7 @@ void fillRegion
 
 #ifndef WAVEFRONT
     const int byteOffset = index * 3;
-    // todo: check if this should be plain number or normalized and re-normalized in byte
+    // todo:  check if this should be plain number or normalized and re-normalized in byte
     frameBuffer.start[byteOffset + 0] =
       (unsigned char)(color.x > 255.0f ? 255.0f : (color.x < 0.0f ? 0.0f : color.x));
     frameBuffer.start[byteOffset + 1] =
