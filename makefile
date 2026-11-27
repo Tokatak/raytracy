@@ -44,14 +44,14 @@ tests-build-wavefront:
 tests-build-cl:
 	cl /Zi /DEBUG /EHsc /I ./ /I ./external/* ./tests/main.c /Fe:cl_test_suite.exe
 # outdated end
-tests-build: tests-build-scalar tests-build-simd
+tests-build: tests-build-scalar tests-build-simd tests-build-wavefront
 tests-run: # todo: consider smarter define itteration
 	@printf "==SCALAR==\n"
 	-test_suite_scalar.exe 
 	@printf "==SIMD==\n"
 	-test_suite_simd.exe
-	# @printf "==WAVEFRONT==\n"
-	# -test_suite_wavefront.exe	
+	@printf "==WAVEFRONT==\n"
+	-test_suite_wavefront.exe	
 test tests: tests-clean tests-build tests-run
 
 

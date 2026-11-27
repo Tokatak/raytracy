@@ -1833,7 +1833,6 @@ void fillRegion
   RayState *front = malloc(allocated);
   RayState *back = malloc(allocated);
   RayState *tmp = NULL;
-  printf("back, front ray states: %zu bytes (%.2f MiB)\n", allocated, (double)allocated / (1024.0 * 1024.0));
 
   // populate front with default screen data
   V3 viewportSize = camera.viewportSize;
@@ -1853,7 +1852,6 @@ void fillRegion
 
   int frontRays = ((abs(topEdge) + abs(bottomEdge)) * (abs(leftEdge)+abs(righEdge) ) ) ;
   int backRays = 0;
-  RayState* rayState = NULL;
 
   for (int screeenY = topEdge, pixelIndex = 0; screeenY > bottomEdge; screeenY--) {
     const float viewportY = screeenY * normHeight;
@@ -1892,13 +1890,11 @@ void fillRegion
   V3 D;
 
   while (frontRays > 0)
-    { 
+    {
       for( int i=0; i < frontRays; i++){
 	ray = front+i;
 	O = ray->origin;
 	D = ray->dir;
-
-	RaySphereIntersection  result = {0};
 
 	// intersectRaySphereClosest
 	float closest_t = BIG_NUMBER;
@@ -1946,8 +1942,6 @@ void fillRegion
 	  }
 	  // intersectRaySphere
 	}
-	result.t1 = closest_t;
-	result.sphere = closest_sphere;
 	// intersectRaySphereClosest
    
 	V3 throughput = ray->throughput;
@@ -2054,7 +2048,10 @@ void fillRegion
     }
 #endif
 
+#if defined(SCALAR) || defined(SIMD)
   V3 color = {0};
+#endif
+  
   for ( size_t index = 0; index< pixelCount; index++){
 #ifdef SCALAR
     color = traceRay(origin,
